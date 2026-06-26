@@ -1,25 +1,29 @@
 ---
-title: Insert hitle here
+title: Quantifying metacognitive performance with the `hmetad` package in `R`
 author: 
-  name: An author
+  name: Kevin O'Neill
   affiliation: 
     name: University College London
-    department: Department of Quarto Slides
+    department: Department of Experimental Psychology
   degrees: PhD
-  orcid: 0000-0001-2345-6789
-  url: https://www.ucl.ac.uk
+  orcid: 0000-0001-7401-9802
+  url: https://kevingoneill.github.io
 bibliography: citations.bib
 format: 
   revealjs:
     theme: [default, "ucl.scss"]
     resources:
       - "fonts/*.otf"
-#    embed-resources: true   # use to compile slides into single .html file
+#    embed-resources: true
     show-notes: false
     slide-number: false
     pdf-separate-fragments: true
     template-partials:
       - title-slide.html
+# enable tikz figures
+#filters:
+#  - diagram
+
 # R code execution
 knitr:
   opts_chunk:
@@ -30,22 +34,56 @@ knitr:
 
 
 ```{r setup}
-## load required packages here
+library(tidyverse)
+library(hmetad)
 ```
 
-# Section 1 { .dark }
+# What is metacognition? { .dark }
 
 
-## Slide 1
+## Type 1 and type 2 decisions
  
+:::: {.columns }
+
+:::: {.fragment .appear .column width="50%"}
+### Type 1
+
+Decision about the world
+
+:::: {.incremental .much-smaller}
+- Is there a stimulus present?
+- Are the dots moving left or right?
+- Have I seen this image before?
+::::
+::::
+
+:::: {.fragment .column width="50%"}
+### Type 2
+
+Decision about yourself
+ 
+:::: {.incremental .much-smaller}
+- Was my type 1 decision correct?
+::::
+
+::::
+
+::::
+
+::: { .ref .right .bottom}
+@clarke1959
+:::
 
 
-## Slide 2
+## Type 1 and type 2 decisions
 
 
-# Section 2 { .dark }
 
-## Slide 3
 
+## Hierarchies of metacognition
+
+Progressively more abstract/global self-estimates
+
+![](https://ars.els-cdn.com/content/image/1-s2.0-S0006322321013299-gr3_lrg.jpg){.center-horizontally}
 
 ## References

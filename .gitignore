@@ -54,3 +54,6 @@ rsconnect/
 # quarto outputs
 slides.html
 slides_files
+
+# previous hmetad workshop materials
+_old

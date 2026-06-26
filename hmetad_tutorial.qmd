@@ -1,0 +1,318 @@
+---
+title: "Quantifying metacognitive performance with the `hmetad` package in `R`"
+format: 
+  html:
+    theme: simplex
+    df-print: paged
+execute:
+  cache: true
+knitr:
+  opts_chunk:
+    collapse: true
+    dev: svg
+    dev.args: { bg: "transparent" }
+---
+
+## Installation
+
+In order to complete the tutorial, you will need three things:
+
+1.  A working installation of `R` (download [here](https://cloud.r-project.org){target="_blank"})
+
+2.  A working installation of RStudio (or your preferred code editor; download [here](https://posit.co/downloads){target="_blank"})
+
+3.  A working installation of the `hmetad` package (documentation [here](https://metacoglab.github.io/hmetad/){target="_blank"}).
+
+    `hmetad` depends on the `brms` package, which in turn requires a `C++` compiler and an installation of the probabilistic programming language Stan. If this is already set up on your computer, you should be able to proceed using the `R` command `install.packages("hmetad")`. If this does not work, please follow the instructions at [https://mc-stan.org/install/](https://mc-stan.org/install/){target="blank"} to get Stan running on your computer. In particular, on Windows machines, you will need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) before installing `hmetad`.
+
+## Setup
+
+First, we will need to start a fresh `R` session and include some necessary packages:
+
+```{r}
+#| message: false
+#| warning: false
+
+library(tidyverse)   # for plotting and data wrangling
+library(hmetad)      # for confidence modeling
+library(patchwork)   # for multi-panel plots
+```
+
+Let's also define a helper function to make some plots for us:
+
+```{r}
+source('hmetad_tutorial_utils.R')
+```
+
+## Simulating the meta-d' model
+
+One of the best ways to understand a model is to take some parameter values, simulate some data, and then to see how the simulated data changed as a function of different parameters. First, let's simulate a dataset with a default set of parameters (we'll use this as a reference later on):
+
+```{r}
+#| label: data_simulation
+d <- sim_metad(N_trials=10000, dprime=1.5)
+d
+```
+
+As you can see, this function gives us a dataset with one row for each of 1,000 trials, the `stimulus` that was presented on that trial (`0` or `1`), the simulated type 1 `response` (`0` or `1`), and the simulated `confidence` level (`1`, `2`, `3`, or `4`), along with the parameter values used to simulate the data.
+
+There are a few ways we might be interested in visualizing these data. First, we can look at the joint probability of any given combination of type 1 and type 2 responses as a function of the presented stimulus:
+
+```{r}
+#| label: joint_response_plot
+plot_joint_response(d)
+```
+
+In this plot, it is clear that the model (for the most part) correctly responds `"0"` when a `0` stimulus was presented and `"1"` when a `1` was presented.
+
+But this histogram is a bit hard to look at: since there are two possible stimuli, two possible responses, and four levels of confidence, we have to visually compare eight separate bars! Another way to plot these data are using receiver operarting characteristic (ROC) curves. To generate an ROC, imagine we put a line between each set of bars and add up the height of all of the bars to the left of each line, separately for stimulus `0` and stimulus `1`. Finally, if we plot the cumulative probabilities for the two stimuli against one another, we get a type 1 ROC curve:
+
+```{r}
+#| label: roc1_plot
+plot_roc1(d)
+```
+
+The way that we can interpret this line is with reference to the diagonal, which represents a completely uniform distribution of responses. Analogously, a curve along the upper left boundary of the plot would represent an agent with perfect task performance.
+
+However, both plots make it somewhat difficult to identify the relationship between accuracy and confidence (our primary interest!). To see this better, we can instead plot the probability of each confidence rating given a correct or incorrect decision:
+
+```{r}
+#| label: correct_plot
+plot_confidence(d)
+```
+
+From here it is easier to see that confidence ratings are generally higher for correct responses compared to incorrect responses.
+
+Finally, another way to visualize metacognitive performance is to make a type 2 receiver operating characteristic (ROC) curve. This plot shows us, for each possible level of confidence `k`, the probability of making a confidence rating greater than `k` for correct and incorrect decisions. That is, it is built in exactly the same way as the type 1 ROC, only using the confidence rating histograms instead of the joint type 1 x type 2 response histograms:
+
+```{r}
+#| label: roc2_plot
+plot_roc2(d)
+```
+
+Since confidence ratings are higher for correct decisions than incorrect decisions, this simulated type 2 ROC curve is above the diagonal.
+
+### How do differences in metacognition manifest?
+
+In order to see what might happen when metacognition is impaired, we can simulate a new dataset with reduced metacognitive efficiency, combining both simulated datasets using `bind_rows` for convenience (we'll explain what these parameters mean in more detail later on):
+
+```{r}
+#| label: data_simulation_metacognition
+d_metacognition <- bind_rows(
+  mutate(d, metacognition='high'),
+  mutate(sim_metad(N_trials=10000, dprime=1.5, log_M=-1), metacognition='low')
+)
+d_metacognition
+```
+
+To visualize metacognitive sensitivity, let's plot confidence directly as a function of accuracy:
+
+```{r}
+#| label: correct_plot_metacognition
+plot_confidence(d_metacognition, metacognition)
+```
+
+In constrast to the previous case, when metacognitive efficiency is reduced, correct and high confidence responses are less likely, whereas incorrect but high confidence responses are more likely. Intuitively, this also means that the type 2 ROC is closer to the diagonal:
+
+```{r}
+#| label: roc2_plot_metacognition
+plot_roc2(d_metacognition, metacognition)
+```
+
+### How does performance change metacognition?
+
+These visualizations are extremely useful in terms of getting an intuition for metacognitive performance, but unfortunately they are not perfect. In particular, these plots are sensitive not only to metacognitive efficiency, but also to task performance (measured by d') and response bias (measured by c). To get an idea of what this means, let's simulate another dataset with the same metacognitive efficiency as before but reduced task performance (again, combining both simulated datasets for convenience):
+
+```{r}
+#| label: data_simulation_performance
+d_performance <- bind_rows(
+  mutate(d, performance='high'),
+  mutate(sim_metad(N_trials=10000, dprime=.5), performance='low')
+)
+d_performance
+```
+
+Again, let's plot confidence directly as a function of accuracy:
+
+```{r}
+#| label: correct_plot_performance
+plot_confidence(d_performance, performance)
+```
+
+Huh, well that's strange- just by visually comparing the distributions, the low performance distribution looks very similar to the "low metacognition" distribution from earlier! Again, correct and high confidence responses are less likely, whereas incorrect but high confidence responses are more likely. We see the same pattern for the type 2 ROC:
+
+```{r}
+#| label: roc2_plot_performance
+plot_roc2(d_performance, performance)
+```
+
+What is going on here? While each of these visualizations provides an *absolute* measure of metacognition, it turns out that the difficulty of metacognition scales with task difficulty. That is, it is much easier to determine whether your response is correct or not when you have a high accuracy to begin with. This hopefully makes sense in hindsight: if you are very good at a task, even if you have no insight into the accuracy of your individual responses, you can appear to have great metacognition by just rating high confidence most of the time!
+
+In general, there are two kinds of approaches to dealing with this problem:
+
+1.  Carefully control for task performance using careful psychophysical manipulations
+2.  Explicitly model the relationship between task performance and metacognition to compute a *relative* measure of metacognition.
+
+In this tutorial we will focus on one version of the latter approach known as the meta-d' model.
+
+### A glimmer of hope
+
+Of course, it sounds great to be able to wave a magical statistical wand to separate cognitive and metacognitive performance from responses and confidence ratings alone. But didn't all of our indicators above look the same regardless of whether task performance or metacognition was impaired? One might doubt that we can ever make a clean separation between cognitive and metacognitive performance.
+
+To get an intuition for how this is possible, let's compare the *type 1 ROCs* with reduced metacognition and reduced performance:
+
+```{r}
+#| label: roc1_plot_metacognition
+plot_roc1(d_metacognition, metacognition)
+```
+
+```{r}
+#| label: roc1_plot_performance
+plot_roc1(d_performance, performance)
+```
+
+Although it was difficult to see before, these plots make it clear that there is indeed a difference: the type 1 ROC only changes shape with impaired metacognition, but it is drawn closer to the diagonal with reduced task performance! It is exactly this feature of the data that lets us distinguish changes in confidence ratings due to differences in metacognition from those due to differences in performance.
+
+## Understanding the meta-d' model
+
+Before we start model fitting, it will be helpful to have an idea of how the meta-d' model captures metacognitive data. The model itself is split into two components, so we will go over each separately.
+
+### Signal detection theory for type 1 responses
+
+The meta-d' model is built on one of the shining achievements of cognitive psychology: signal detection theory (SDT). In a typical signal detection task, trials can be split up into one of four categories:
+
+|                  |   Stimulus = 0    | Stimulus = 1 |
+|:----------------:|:-----------------:|:------------:|
+| **Response = 0** | Correct Rejection |     Miss     |
+| **Response = 1** |    False Alarm    |     Hit      |
+
+For a stimulus $S$ and response $R$, this lets us define four corresponding probabilities:
+
+-   $P(\textrm{Hit}) = P(R=1 \vert S=1)$
+-   $P(\textrm{Miss}) = P(R=0 \vert S=1) = 1 - P(\textrm{Hit})$
+-   $P(\textrm{False Alarm}) = P(R=1 \vert S=0)$
+-   $P(\textrm{Correct Rejection}) = P(R=0 \vert S=0) = 1 - P(\textrm{False Alarm})$
+
+Our goal is to model these four probabilities. To do so, we will assume that people receive some noisy evidence about the stimulus, $x_1$. For simplicity, we will assume that the evidence has a normal distribution with a mean that depends on the stimulus $S$:
+
+```{r}
+#| label: fig-sdt
+#| fig-cap: "Signal Detection Theory assumes that stimuli are noisily encoded"
+#| fig-width: 6
+#| fig-height: 2
+#| echo: false
+#| message: false
+
+library(paletteer)
+library(ggdist)
+library(distributional)
+
+ALPHA <- .33
+PALETTE <- paletteer_d("fishualize::Phractocephalus_hemioliopterus")[c(1, 3)]
+THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
+                      expand=expansion(mult=c(.1, .1))) {
+  list(scale_x_continuous(xlab, limits=limits, breaks=seq(-4, 4, by=2), expand=expand),
+       scale_color_manual('Stimulus', values=PALETTE),
+       scale_fill_manual('Stimulus', values=PALETTE),
+       scale_y_continuous(expand=c(0, 0)),
+       theme_classic(base_size=base_size, paper=alpha('white', 0)),
+       theme(axis.title.y=element_blank(),
+             axis.text.y=element_blank(),
+             axis.ticks.y=element_blank(),
+             axis.line.y=element_blank()))
+}
+
+d_prime <- 1.5
+c <- .5
+meta_d_prime <- 1
+
+evidence <- tibble(Stimulus=factor(0:1),
+                   d_prime=d_prime, c=c, meta_d_prime=meta_d_prime,
+                   mu1=c(-1, 1)*d_prime/2, sd=1,
+                   mu2=c(-1, 1)*meta_d_prime/2)
+
+ggplot(evidence, aes(xdist=dist_normal(mu1, sd))) +
+  stat_slab(aes(fill=Stimulus), color=NA, alpha=ALPHA, scale=.8) +
+  geom_segment(aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE,
+               data=tibble(x=-d_prime/2, xend=d_prime/2, y=.8, yend=.8)) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=0, y=.925, label="d'")) +
+  THEME_SDT(xlab='Type 1 Evidence', expand=expansion())
+```
+
+As the plot indicates, we'll use $d'$ to refer to the distance between the distributions of evidence for $S=0$ and $S=1$.
+
+Then, we assume that people set an evidence threshold (or, criterion, $c$) that they use to decide whether they think $S=0$ or $S=1$. Specifically, people respond $R=0$ when the evidence is less than the threshold and $R=1$ when the evidence exceeds the threshold:
+
+```{r}
+#| label: fig-sdt2
+#| fig-cap: "The criterion defines the amount of evidence required to respond R=1"
+#| fig-width: 6
+#| fig-height: 2
+#| echo: false
+#| message: false
+
+ggplot(evidence, aes(xdist=dist_normal(mu1, sd))) +
+  stat_slab(aes(fill=Stimulus), color=NA, alpha=ALPHA, scale=.8) +
+  geom_vline(aes(xintercept=c)) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c-.15, y=.9, label="c")) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c-1, y=.25, label="R=0"), color=PALETTE[1]) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c+1, y=.25, label="R=1"), color=PALETTE[2]) +
+  THEME_SDT(xlab='Type 1 Evidence', expand=expansion())
+```
+
+In this setup, the probability of a hit (alternatively, false alarm) is just the area under the yellow (alternatively, red) curve to the right of the threshold.
+
+### Modeling type 2 responses
+
+The meta-d' model adds to classical SDT by including a separate process for confidence ratings. This process works very similar: we assume that, depending on their previous response, people get another sample of noisy evidence about the stimulus to make confidence ratings ($x_2$), and then they threshold this evidence to make an confidence rating ($C$):
+
+```{r}
+#| label: fig-sdt3
+#| fig-cap: "People receive a separate piece of evidence to make confidence ratings"
+#| fig-width: 6
+#| fig-height: 2
+#| echo: false
+#| message: false
+
+ggplot(evidence, aes(xdist=dist_normal(mu2, sd))) +
+  stat_slab(aes(fill=Stimulus), color=NA, alpha=ALPHA, scale=.8) +
+  geom_vline(aes(xintercept=c)) +
+  geom_vline(aes(xintercept=c2), linetype='dashed', data=tibble(c2=c+c(-1.5, -.5, .75, 1.25))) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c-.25, y=.25, label="C=1"), size=4) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c-1, y=.25, label="C=2"), size=4) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c-2, y=.25, label="C=3"), size=4) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c+.75/2, y=.25, label="C=1"), size=4) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c+1, y=.25, label="C=2"), size=4) +
+  geom_text(aes(x=x, y=y, label=label), inherit.aes=FALSE,
+            data=tibble(x=c+1.5, y=.25, label="C=3"), size=4) +
+  THEME_SDT(xlab='Type 2 Evidence', expand=expansion())
+```
+
+In this model, we refer to sensitivity of the evidence for confidence ratings as meta-$d'$, the confidence criteria for zero responses as meta-$c_2^0$ and those for one responses as meta-$c_2^1$. Again, the probability of a confidence rating given a type 1 response is just the corresponding area under the red or yellow distribution curves.
+
+### Exercise
+
+> To get a deeper understanding of how the model works, visit [https://kevingoneill.shinyapps.io/hmetad](https://kevingoneill.shinyapps.io/hmetad){target="_blank"} to play around with the model and visualize the impact of its different parameters.[^1]
+>
+> Some things to think about while you explore:
+>
+> -   How does the shape of the ROC change as a function of metacognitive sensitivity? What does it look like at the extremes?
+> -   How does the type 1 criterion (c) impact metacognition? Does it impact metacognition equally for different type 1 responses?
+> -   What happens when the type 2 criteria are close together? What kind of strategy might this reflect, cognitively?
+
+[^1]: Note that unlike the previous simulations, this app uses the analytically derived response probabilities, so these results will not vary across simulations.
+
+## Fitting the meta-d' model
+
+### Single-subject estimation
+
+### Hierarchical estimation
