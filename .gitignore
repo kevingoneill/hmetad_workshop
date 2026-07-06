@@ -1,6 +1,7 @@
 # History files
 .Rhistory
 .Rapp.history
+**/*.Rproj
 
 # Session Data files
 .RData
@@ -54,6 +55,9 @@ rsconnect/
 # quarto outputs
 slides.html
 slides_files
+hmetad_tutorial.html
+hmetad_tutorial_files
+
 
 # previous hmetad workshop materials
 _old

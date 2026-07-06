@@ -8,13 +8,26 @@
 \definecolor{UCL_heritage_blue}{RGB}{48,214,255}
 
 %\usetikzlibrary{shapes,decorations,arrows,calc,arrows.meta,fit,positioning}
-\usetikzlibrary{positioning, arrows, arrows.meta}
+\usetikzlibrary{positioning, arrows, arrows.meta, shapes}
 \tikzset{
-  %every picture/.style={background rectangle/.style={fill=yellow!20}},
-  every node/.style={draw, , align=center,
-    fill=UCL_dark_purple, color=UCL_dark_purple, text=UCL_off_white},
+  every picture/.style={background rectangle/.style={fill=yellow!20}},
+  every node/.style={
+    draw, align=center,
+    minimum size=1cm,
+    fill=UCL_dark_purple, color=UCL_dark_purple, text=UCL_off_white
+  },
   every edge/.style={-Triangle[], draw, color=UCL_dark_purple},
-  image/.style = { draw=none, inner sep=0, outer sep=0, minimum width=0cm }
+  image/.style = {
+    %draw=none, fill=none,
+    inner sep=0, outer sep=0,
+    minimum size=1cm, align=none
+  },
+  hidden/.style = {
+    draw=none, fill=none, opacity=0
+  },
+  unboxed/.style = {
+    draw=none, fill=none, text=UCL_dark_purple
+  }
   %state/.style ={circle, draw, minimum width=1cm},
   %point/.style = {circle, draw, inner sep=0.04cm,fill,node contents={}},
   %bidirected/.style={Latex-Latex,dashed},

@@ -1,0 +1,17 @@
+title: ucl-revealjs
+author: Kevin O'Neill
+version: 1.0.0
+quarto-required: ">=1.9.0"
+contributes:
+  formats:
+    revealjs:
+      theme: [default, ucl.scss]
+      logo: logo-dark.svg
+      template-partials:
+        - title-slide.html
+      include-after-body:
+        text: |
+          <script type="application/javascript" src="_extensions/kevingoneill/ucl/logo.js"></script>
+
+
+          

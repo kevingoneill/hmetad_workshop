@@ -1,16 +1,57 @@
 ---
 title: "Quantifying metacognitive performance with the `hmetad` package in `R`"
+author: 
+  name: Kevin O'Neill
+  affiliation: 
+    name: University College London
+    department: Department of Experimental Psychology
+  degrees: PhD
+  orcid: 0000-0001-7401-9802
+  url: https://kevingoneill.github.io
 format: 
   html:
     theme: simplex
     df-print: paged
+    toc: true
+    toc-depth: 4
+    html-math-method: katex
+bibliography: citations.bib
 execute:
   cache: true
+  warning: false
+  message: false
+  error: false
+filters:
+  - custom-callout
+  - collapse-output
+custom-callout:
+  exercise:
+    title: Exercise
+    color: blue
+    icon-symbol: fa-pen-to-square 
+  answer:
+    title: Solution
+    color: green
+    icon-symbol: fa-lightbulb
+    collapse: true
+extensions:
+  collapse-output:
+    collapse-all-outputs: true
+    summaries:
+      stdout: Output
+      stderr: Errors
+      display: Output
 knitr:
   opts_chunk:
-    collapse: true
     dev: svg
     dev.args: { bg: "transparent" }
+    message: false
+    warning: false
+    error: false
+    fig-align: center
+    tidy: styler
+    comment: ''
+embed-resources: true
 ---
 
 ## Installation
@@ -25,26 +66,34 @@ In order to complete the tutorial, you will need three things:
 
     `hmetad` depends on the `brms` package, which in turn requires a `C++` compiler and an installation of the probabilistic programming language Stan. If this is already set up on your computer, you should be able to proceed using the `R` command `install.packages("hmetad")`. If this does not work, please follow the instructions at [https://mc-stan.org/install/](https://mc-stan.org/install/){target="blank"} to get Stan running on your computer. In particular, on Windows machines, you will need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) before installing `hmetad`.
 
+## Instructions
+
+The goal of this workshop is to obtain a working knowledge of how metacognition is measured, how it is modeled, and how Bayesian modeling can help to this end. It is *not* to make you an expert in `R` programming. So, rather than being asked to write the code on your own, this tutorial provides pre-written code that you can run, adjust, and re-run to get a better understanding of what is going on. 
+
+To follow the tutorial, create a blank `R` script or notebook. As you progress, simply copy each code block into your script and run it (there is a copy button on the right side of each code block). Feel free to fiddle with things until you feel you understand what is going on. When you're done, not only will you hopefully have a better intuition for Bayesian models of metacognition, but you will also have a lot of template code that you can use in your own projects!
+
+
 ## Setup
 
 First, we will need to start a fresh `R` session and include some necessary packages:
 
 ```{r}
-#| message: false
-#| warning: false
+#| cache: false
+library(tidyverse)         # for plotting and data wrangling
+library(hmetad)            # for confidence modeling
+library(tidybayes)         # for wrangling posteriors
 
-library(tidyverse)   # for plotting and data wrangling
-library(hmetad)      # for confidence modeling
-library(patchwork)   # for multi-panel plots
+options(mc.cores=parallel::detectCores())   # fit models in parallel
 ```
 
 Let's also define a helper function to make some plots for us:
 
 ```{r}
+#| cache: false
 source('hmetad_tutorial_utils.R')
 ```
 
-## Simulating the meta-d' model
+## A descriptive perspective on metacognitive sensitivity
 
 One of the best ways to understand a model is to take some parameter values, simulate some data, and then to see how the simulated data changed as a function of different parameters. First, let's simulate a dataset with a default set of parameters (we'll use this as a reference later on):
 
@@ -56,35 +105,16 @@ d
 
 As you can see, this function gives us a dataset with one row for each of 1,000 trials, the `stimulus` that was presented on that trial (`0` or `1`), the simulated type 1 `response` (`0` or `1`), and the simulated `confidence` level (`1`, `2`, `3`, or `4`), along with the parameter values used to simulate the data.
 
-There are a few ways we might be interested in visualizing these data. First, we can look at the joint probability of any given combination of type 1 and type 2 responses as a function of the presented stimulus:
-
-```{r}
-#| label: joint_response_plot
-plot_joint_response(d)
-```
-
-In this plot, it is clear that the model (for the most part) correctly responds `"0"` when a `0` stimulus was presented and `"1"` when a `1` was presented.
-
-But this histogram is a bit hard to look at: since there are two possible stimuli, two possible responses, and four levels of confidence, we have to visually compare eight separate bars! Another way to plot these data are using receiver operarting characteristic (ROC) curves. To generate an ROC, imagine we put a line between each set of bars and add up the height of all of the bars to the left of each line, separately for stimulus `0` and stimulus `1`. Finally, if we plot the cumulative probabilities for the two stimuli against one another, we get a type 1 ROC curve:
-
-```{r}
-#| label: roc1_plot
-plot_roc1(d)
-```
-
-The way that we can interpret this line is with reference to the diagonal, which represents a completely uniform distribution of responses. Analogously, a curve along the upper left boundary of the plot would represent an agent with perfect task performance.
-
-However, both plots make it somewhat difficult to identify the relationship between accuracy and confidence (our primary interest!). To see this better, we can instead plot the probability of each confidence rating given a correct or incorrect decision:
+We are often interested in quantifying *metacognitive sensitivity*: the relationship between confidence ratings and objective performance. To see this directly, we can plot the probability of each confidence rating given a correct or incorrect decision:
 
 ```{r}
 #| label: correct_plot
 plot_confidence(d)
 ```
 
-From here it is easier to see that confidence ratings are generally higher for correct responses compared to incorrect responses.
+From here it is easy to see that confidence ratings are generally higher for correct responses compared to incorrect responses. This is an indicator of high metacognitive sensitivity: participants are aware then they are likely to be making a mistake.
 
-Finally, another way to visualize metacognitive performance is to make a type 2 receiver operating characteristic (ROC) curve. This plot shows us, for each possible level of confidence `k`, the probability of making a confidence rating greater than `k` for correct and incorrect decisions. That is, it is built in exactly the same way as the type 1 ROC, only using the confidence rating histograms instead of the joint type 1 x type 2 response histograms:
-
+Another way to visualize metacognitive performance is to make a type 2 receiver operating characteristic (ROC) curve. This plot shows us, for each possible level of confidence `k`, the probability of making a confidence rating greater than `k` for correct and incorrect decisions. That is, we can slide a line between each confidence level, calculate the proportion of correct and incorrect responses to the right of the line, and then plot the proportions against each other:
 ```{r}
 #| label: roc2_plot
 plot_roc2(d)
@@ -92,16 +122,37 @@ plot_roc2(d)
 
 Since confidence ratings are higher for correct decisions than incorrect decisions, this simulated type 2 ROC curve is above the diagonal.
 
+
+
+::: {.exercise}
+## Exercise: understanding the type 2 ROC
+
+What would the type 2 ROC look like if confidence ratings were the same for correct and incorrect responses?
+
+What would the type 2 ROC look like if confidence ratings perfectly separated correct and incorrect responses?
+:::
+
+::: {.answer}
+If confidence ratings were equally distributed for correct and incorrect responses, the type 2 ROC would lie on the main diagonal (the dashed line in the plot above). This is because confident responses are equally likely for correct and incorrect responses.
+
+If confidence ratings perfectly separated correct and incorrect responses, the type 2 ROC would make a right angle along the upper left boundary of the plot. For example, imagine that confidence ratings were < 2 for incorrect responses and > 2 for correct responses. If we place a confidence criterion at 2, then, all of the incorrect responses would be to the left of the criterion (indicating a type 2 false alarm rate of 0) and all of the correct responses would be to the right of the criterion (indicating a type 2 hit rate of 1).
+:::
+
+
+
 ### How do differences in metacognition manifest?
 
 In order to see what might happen when metacognition is impaired, we can simulate a new dataset with reduced metacognitive efficiency, combining both simulated datasets using `bind_rows` for convenience (we'll explain what these parameters mean in more detail later on):
 
 ```{r}
 #| label: data_simulation_metacognition
-d_metacognition <- bind_rows(
-  mutate(d, metacognition='high'),
-  mutate(sim_metad(N_trials=10000, dprime=1.5, log_M=-1), metacognition='low')
-)
+# label the previous dataset as "high" metacognition
+d <- d |> mutate(metacognition='high')
+
+# create a new dataset with "low" metacognition and join them together
+d_metacognition <- sim_metad(N_trials=10000, dprime=1.5, log_M=-1) |>
+  mutate(metacognition='low') |>
+  bind_rows(d)
 d_metacognition
 ```
 
@@ -125,10 +176,13 @@ These visualizations are extremely useful in terms of getting an intuition for m
 
 ```{r}
 #| label: data_simulation_performance
-d_performance <- bind_rows(
-  mutate(d, performance='high'),
-  mutate(sim_metad(N_trials=10000, dprime=.5), performance='low')
-)
+# label the previous dataset as "high" performance
+d <- d |> mutate(performance='high')
+
+# create a new dataset with "low" performance and join them together
+d_performance <- sim_metad(N_trials=10000, dprime=.5) |>
+  mutate(performance='low') |>
+  bind_rows(d)
 d_performance
 ```
 
@@ -153,13 +207,27 @@ In general, there are two kinds of approaches to dealing with this problem:
 1.  Carefully control for task performance using careful psychophysical manipulations
 2.  Explicitly model the relationship between task performance and metacognition to compute a *relative* measure of metacognition.
 
-In this tutorial we will focus on one version of the latter approach known as the meta-d' model.
+In this tutorial we will focus on one version of the latter approach known as the **meta-d' model**.
 
 ### A glimmer of hope
 
-Of course, it sounds great to be able to wave a magical statistical wand to separate cognitive and metacognitive performance from responses and confidence ratings alone. But didn't all of our indicators above look the same regardless of whether task performance or metacognition was impaired? One might doubt that we can ever make a clean separation between cognitive and metacognitive performance.
+Of course, it sounds great to be able to wave a magical statistical wand to separate cognitive and metacognitive performance from responses and confidence ratings alone. But didn't all of our data look the same regardless of whether task performance or metacognition was impaired? One might doubt that we can ever make a clean separation between cognitive and metacognitive performance.
 
-To get an intuition for how this is possible, let's compare the *type 1 ROCs* with reduced metacognition and reduced performance:
+To get an intuition for how this is possible, let's instead plot the joint distribution of type 1 and type 2 responses. In this plot, the type 1 and type 2 responses are combined into a single joint response, where values on the ends of the scale correspond to different type 1 responses with high confidence, and values in the middle of the scale correspond to guesses:
+
+```{r}
+#| label: joint_plot_metacognition
+plot_joint_response(d_metacognition, metacognition)
+```
+
+```{r}
+#| label: joint_plot_performance
+plot_joint_response(d_performance, performance)
+```
+
+Since these plots show both type 1 responses and confidence ratings, they have a lot more going on. But, comparing the four histograms, it is also clear that there actually is a difference between reduced metacognition and reduced performance! While participants still discriminate strongly between the two stimuli with reduced metacognition, the distributions of responses look very similar for reduced performance.
+
+Similar to the type 2 ROCs we made above, we can also make *pseudo type 1 ROCs* by sliding a threshold from the left to the right of each histogram and taking the proportion of responses to the right of the threshold:
 
 ```{r}
 #| label: roc1_plot_metacognition
@@ -177,9 +245,13 @@ Although it was difficult to see before, these plots make it clear that there is
 
 Before we start model fitting, it will be helpful to have an idea of how the meta-d' model captures metacognitive data. The model itself is split into two components, so we will go over each separately.
 
+:::{.callout-note}
+If you are familiar with signal detection theory and the meta-d' model, feel free to skip ahead!
+:::
+
 ### Signal detection theory for type 1 responses
 
-The meta-d' model is built on one of the shining achievements of cognitive psychology: signal detection theory (SDT). In a typical signal detection task, trials can be split up into one of four categories:
+The meta-d' model is built on one of the shining achievements of cognitive psychology: signal detection theory [@clarke1959]. In a typical signal detection task, trials can be split up into one of four categories:
 
 |                  |   Stimulus = 0    | Stimulus = 1 |
 |:----------------:|:-----------------:|:------------:|
@@ -197,12 +269,10 @@ Our goal is to model these four probabilities. To do so, we will assume that peo
 
 ```{r}
 #| label: fig-sdt
-#| fig-cap: "Signal Detection Theory assumes that stimuli are noisily encoded"
 #| fig-width: 6
 #| fig-height: 2
 #| echo: false
-#| message: false
-
+#| output-fold: false
 library(paletteer)
 library(ggdist)
 library(distributional)
@@ -246,12 +316,10 @@ Then, we assume that people set an evidence threshold (or, criterion, $c$) that 
 
 ```{r}
 #| label: fig-sdt2
-#| fig-cap: "The criterion defines the amount of evidence required to respond R=1"
 #| fig-width: 6
 #| fig-height: 2
 #| echo: false
-#| message: false
-
+#| output-fold: false
 ggplot(evidence, aes(xdist=dist_normal(mu1, sd))) +
   stat_slab(aes(fill=Stimulus), color=NA, alpha=ALPHA, scale=.8) +
   geom_vline(aes(xintercept=c)) +
@@ -268,16 +336,14 @@ In this setup, the probability of a hit (alternatively, false alarm) is just the
 
 ### Modeling type 2 responses
 
-The meta-d' model adds to classical SDT by including a separate process for confidence ratings. This process works very similar: we assume that, depending on their previous response, people get another sample of noisy evidence about the stimulus to make confidence ratings ($x_2$), and then they threshold this evidence to make an confidence rating ($C$):
+The meta-d' model adds to classical SDT by including a separate process for confidence ratings [@maniscalco2012; @maniscalco2014; @fleming2017]. This process works very similar: we assume that, depending on their previous response, people get another sample of noisy evidence about the stimulus to make confidence ratings ($x_2$), and then they threshold this evidence to make an confidence rating ($C$):
 
 ```{r}
 #| label: fig-sdt3
-#| fig-cap: "People receive a separate piece of evidence to make confidence ratings"
 #| fig-width: 6
 #| fig-height: 2
 #| echo: false
-#| message: false
-
+#| output-fold: false
 ggplot(evidence, aes(xdist=dist_normal(mu2, sd))) +
   stat_slab(aes(fill=Stimulus), color=NA, alpha=ALPHA, scale=.8) +
   geom_vline(aes(xintercept=c)) +
@@ -299,20 +365,433 @@ ggplot(evidence, aes(xdist=dist_normal(mu2, sd))) +
 
 In this model, we refer to sensitivity of the evidence for confidence ratings as meta-$d'$, the confidence criteria for zero responses as meta-$c_2^0$ and those for one responses as meta-$c_2^1$. Again, the probability of a confidence rating given a type 1 response is just the corresponding area under the red or yellow distribution curves.
 
-### Exercise
 
-> To get a deeper understanding of how the model works, visit [https://kevingoneill.shinyapps.io/hmetad](https://kevingoneill.shinyapps.io/hmetad){target="_blank"} to play around with the model and visualize the impact of its different parameters.[^1]
->
-> Some things to think about while you explore:
->
-> -   How does the shape of the ROC change as a function of metacognitive sensitivity? What does it look like at the extremes?
-> -   How does the type 1 criterion (c) impact metacognition? Does it impact metacognition equally for different type 1 responses?
-> -   What happens when the type 2 criteria are close together? What kind of strategy might this reflect, cognitively?
 
-[^1]: Note that unlike the previous simulations, this app uses the analytically derived response probabilities, so these results will not vary across simulations.
+:::{.exercise}
+## Exercise: playing around with the meta-d' model
+ To get a deeper understanding of how the model works, visit <https://kevingoneill.shinyapps.io/hmetad>{target="_blank"} to play around with the model and visualize the impact of its different parameters.^[Note that unlike the previous simulations, this app uses the analytically derived response probabilities, so these results will not vary across simulations.]
+
+ Some things to think about while you explore:
+
+ 1. How does the shape of the ROC change as a function of metacognitive sensitivity? What does it look like at the extremes?
+ 2. How does the type 1 criterion ($c$) impact metacognition (type 2 ROC)? Does it impact metacognition equally for different type 1 responses?
+ 3. What happens when the type 2 criteria are close together? What kind of strategy might this reflect, cognitively?
+
+:::
+
+:::{.answer}
+1. Metacognitive sensitivity affects the concavity of the type 1 ROC around its central point. When metacognitive sensitivity is optimal (meta-$d'$ = $d'$), the type 1 ROC has a nice rounded shape defined by the normal distribution. When metacognitive sensitivity is low (meta-$d'$ < $d'$), the type 1 ROC gets flatter, and becomes a perfect triangle when meta-$d'$ = 0. Finally, when metacognitive sensitivity is high, the type 1 ROC takes an *M*-like shape, and forms three right angles as meta-$d'$ $\rightarrow\;\infty$.
+2. The type 1 criterion determines which type 1 response is more likely overall. As a result, it makes metacognition easier for the response that becomes less likely, since more evidence is needed to make that response to begin with. For the same reason, it makes metacognition harder for the more common response.
+3.  When the type 2 criteria are close together, the confidence rating between them becomes less likely and the higher confident ratings become more likely. This would correspond to a strategy with high metacognitive bias: the closer the type 2 criteria are, the less evidence is needed to make a confident response, and the more (over-)confident the person appears.
+:::
+
+
 
 ## Fitting the meta-d' model
+Now that we have an idea about how models like the meta-d' model can separate metacognitive sensitivity from type 1 performance, we can try fitting the model to some data! We will be using the [`hmetad`](https://metacoglab.github.io/hmetad){target="_blank"} package, which extends the original Hmetad-Toolbox in MATLAB [@fleming2017].
 
-### Single-subject estimation
+Although we'll be focusing on the meta-d' model, we'll try to take away some general lessons about Bayesian estimation. In particular, we'll focus on two strategies used by Bayesian models to extract more precise and reliable estimates:
 
-### Hierarchical estimation
+1. Priors over model parameters bias inferences toward our expectations
+2. Hierarchical priors over participant-level parameters bias inferences about individual participants toward the population mean
+
+
+### Single-participant estimation
+To start, let's imagine we have data from just a single participant. To make things more realistic, we can simulate a new dataset with a smaller number of trials and a known set of parameters:
+
+```{r}
+#| label: data_simulation_spe
+d <- sim_metad(
+  N_trials=50, log_M=-0.5,
+  dprime=1.5, c=0,
+  c2_0_diff=c(0.5, 0.5), c2_1_diff=c(0.5, 0.5)
+)
+```
+
+In order to fit the meta-d' model, we first need to know which parameters the model has, since the number of confidence thresholds depends on the number of confidence levels in our data. To do so, we can use the following code:
+```{r}
+#| label: metac2_parameters
+metac2_parameters(K=3)
+```
+
+Because the data have three levels of confidence, our model will have two confidence thresholds for each type 1 response (the parameters are named with the suffix `diff` because, technically, they define the distances between thresholds). To fit our model, then, we simply call the `fit_metad` function with an `R`-style formula for each model parameter. For now, since we have only one participant and no covariates, we can model each parameter with just a fixed intercept (`~ 1` in `R` formula syntax):
+
+```{r}
+#| label: spe
+m <- fit_metad(
+  bf(
+    N ~ 1,
+    dprime ~ 1,
+    c ~ 1,
+    metac2zero1diff ~ 1,
+    metac2zero2diff ~ 1,
+    metac2one1diff ~ 1,
+    metac2one2diff ~ 1
+  ),
+  data=d
+)
+```
+
+```{r}
+#| label: spe_summary
+summary(m, prior=TRUE)
+```
+
+If we compare the model estimates of our parameters with their true values, we can see two patterns. 
+
+First, although the model estimates are close to the true values, they are not perfect. 
+
+:::{.exercise}
+Why is this the case? To get an intuition, try re-running the data simulation and model fitting a couple of times to see how the results vary.
+:::
+
+Second, our model estimates have a *lot* of uncertainty. 
+
+:::{.exercise}
+Why might this happen?
+:::
+
+Let's dive into each of these questions individually.
+
+
+#### Evaluating model fit with posterior retrodictive checks
+We've already compared our model estimates with the ground truth parameter values used in our simulation. But it isn't always easy to see how well a model captures the data just by looking at the parameter values. 
+
+To see things more clearly, we can compute the histograms and ROCs implied by the model, and compare those directly with the data. This process is called a *posterior retrodictive check*, because it uses the model posterior to make predictions of how it estimated the data to have looked. If the model retrodictions closely match the actual data, we can say that our model parameters describe these patterns well. If not, well, we have good reason to change something about our model.
+
+For example, we can get the model predicted joint response probabilities using the function `epred_draws_metad`:
+
+```{r}
+#| label: spe_prc_joint_response
+newdata <- tibble(participant=1)   ## a dataset to make predictions for
+draws <- epred_draws_metad(m, newdata)
+draws
+```
+
+Here, each row represents a single posterior sample, where `.epred` is the probability of a given type 1/type 2 response. Let's plot these probabilities against the data:
+
+```{r}
+#| label: spe_prc_joint_response2
+plot_joint_response(d, draws=draws)
+```
+
+Even if our parameter estimates aren't spot on, our prediction of the data is actually pretty good! If we like, we can also visualize the model predictions of the type 1 ROC in the same way:
+
+```{r}
+#| label: spe_prc_roc1
+plot_roc1(d, draws=roc1_draws(m, newdata, bounds=TRUE))
+```
+
+And the type 2 ROC:
+```{r}
+#| label: spe_prc_roc2
+plot_roc2(d, draws=roc2_draws(m, newdata, bounds=TRUE))
+```
+
+Similar to before, we can see that our model actually does a pretty good job of capturing the data, even if its predictions are not that precise.
+
+
+
+#### Setting model priors with domain knowledge and prior prediction checks
+Speaking of our model predictions being vague, why might this happen? There are actually two reasons. First, our dataset is somewhat small: with just 50 trials, we only get so much statistical power to fit this participant's behavior. The other reason is that we have a lot of prior knowledge about metacognition that we aren't yet incorporating into our model.
+
+Let's check the default priors used by our model:
+```{r}
+prior_summary(m)
+```
+
+This table says that by default, `brms` put a wide $t$-distribution prior on $\log(M)$, and a no priors over the other parameters. This means that, before seeing the data, our model will allow $d'$ to take literally *any* value: `0`, `-1`, `100000`, and `-54321` are all considered equally likely! While all of these values are technically possible, if we actually estimated them in our data we would think that something went seriously wrong with our experiment---either the data was recorded improperly, the task was incredibly easy or difficuly, or the participants had a terrible misunderstanding of what they were supposed to do.
+
+In Bayesian inference, we want to down-weight the probability of any of these crazy values from showing up. The way we do this is by specifying a prior distribution over each parameter that says which values we should expect in a typical experiment. There are two sources of information to help decide which priors to choose: (a) prior predictive checks and (b) domain knowledge. 
+
+A prior predictive check is just like the posterior retrodictive check we have already performed on our fitted model, except that (as the name suggests) we temporarily ignore the actual data and perform the check on our prior. 
+
+:::{.callout-important}
+Usually, one would perform a prior predictive check ***before collecting the data***, since we should not let the data influence our choice of prior (that would be like Bayesian *p*-hacking!). 
+
+This means that one would normally **not** plot the data alongside the prior. But, for demonstration purposes, here we will plot the data as a comparison.
+:::
+
+To start, let's use really wide normal distributions for each parameter^[For technical reasons, `brms` cannot sample from its default flat priors]
+
+```{r}
+#| label: spe_prior
+m_prior <- update(m, sample_prior='only',
+                  prior=set_prior('normal(0, 5)', class='Intercept') +
+                    set_prior('normal(0, 5)', class='Intercept',
+                              dpar=c('dprime', 'c', metac2_parameters(K=3))))
+```
+```{r}
+summary(m_prior)
+```
+
+This model summary confirms that all of our parameters are just normal distributions with means of `0` (the `Estimate` column) and standard deviations of `5` (the `Est.Error` column). Now let's plot our prior predicted probabilities:
+
+```{r}
+#| label: spe_ppc_joint_response
+plot_joint_response(d, draws=epred_draws_metad(m_prior, newdata))
+```
+
+Well, that isn't helpful. Since our prior is so wide, not only is every response expected to be equally likely, but each of the probabilities could be anything between `0` and `1`. Clearly, something needs to change. But how do we decide what to change?
+
+One strategy is trial and error: just pick a prior that feels right, simulate out its predictions, see what looks off, and iterate until you have something that you are happy with. Obviously this strategy will work, but it will likely take you some time.
+
+:::{.exercise}
+## Exercise: prior predictive checks
+Try adjusting the prior in different ways. 
+For each parameter, change the prior mean and/or the prior standard deviation.
+How does each of these change the prior predictions?
+:::
+:::{.answer}
+In Bayesian inference, the posterior estimate will always be biased toward the prior mean. For example, if the prior mean is at $M=1$ but the $M$-ratio that makes the data most likely is $M=\frac{1}{2}$, the posterior mean will be somewhere between the two ($M \in [\frac{1}{2}, 1]$).
+
+The prior standard deviation controls how *strong* this bias is. When the prior is wide, the bias is usually so small that the posterior will almost exactly match the most likely value. But when the prior is narrow, the posterior will look just like the prior even with a decently large dataset. Importantly, though, with enough data the posterior will always converge to the most likely value no matter how narrow the prior is.
+:::
+
+A better strategy to start with, however, is to use whatever knowledge we happen to have about metacognition in general or our experiment in particular. For a typical psychological task, we would expect most $M$-ratios and $d'$s to be roughly between `0.5` and `2`, our $c$s to be roughly between `-1` and `1`, and the distances between confidence thresholds to be roughly between `.1` and `5`. So, let'stry again, setting normal priors that have roughly these ranges:
+
+```{r}
+#| label: spe_prior2
+m_prior <- update(m, sample_prior='only',
+                  prior=set_prior('normal(0, 0.5)', class='Intercept') +
+                    set_prior('normal(1, 0.5)', class='Intercept', dpar='dprime') +
+                    set_prior('normal(0, 0.5)', class='Intercept', dpar='c') +
+                    set_prior('normal(-0.5, 1)', class='Intercept',
+                              dpar=metac2_parameters(K=3)))
+```
+
+```{r}
+#| label: spe_ppc_joint_response2
+plot_joint_response(d, draws=epred_draws_metad(m_prior, newdata)) 
+```
+
+This prior still has a lot of uncertainty, but it is already looking much more reasonable: the prior probability of correct responses is higher than incorrect responses, and correct responses are more likely to be confident a priori. Of course, we might still want to tweak things a bit, but this is good enough for now.
+
+Now let's re-fit the model with our new priors:
+```{r}
+#| label: spe_new
+m2 <- update(m_prior, sample_prior='no')
+```
+```{r}
+summary(m2)
+```
+
+Compared to our previous fit with flat priors, the parameter estimates are actually fairly similar! This is because our prior put relatively high probability over the true parameter values.
+
+We can re-do our posterior retrodictive checks to see things more clearly:
+
+```{r}
+#| label: spe_prc_new_joint_response
+plot_joint_response(d, draws=epred_draws_metad(m2, newdata)) 
+```
+
+```{r}
+#| label: spe_prc_new_roc1
+plot_roc1(d, draws=roc1_draws(m2, newdata, bounds=TRUE))
+```
+
+```{r}
+#| label: spe_prc_new_roc2
+plot_roc2(d, draws=roc2_draws(m2, newdata, bounds=TRUE))
+```
+
+Compared to our estimates with flat priors, these model predictions are actually slightly further from the data, but they have less uncertainty. 
+
+:::{.exercise}
+## Check your understanding
+Why is this the case?
+
+Is this a good or bad thing?
+
+Try fitting the model again, but this time with really tight priors.
+(e.g., set the prior standard deviations to `0.01`). 
+
+How well does this model fit the data? Why?
+:::
+:::{.answer}
+Our model predictions are further away from the data and have less uncertainty because our new priors have a smaller width than our original flat priors. This sounds like a bad thing, but it is actually good: by forcing our estimates to be consistent with our prior knowledge, we are defending against the possibility that we obtain unexpected estimates simply by chance.
+:::
+
+
+
+
+
+
+
+### Hierarchical models for repeated measures
+
+Until now we have been concerned with fitting data for a single participant. But most of the time we are interested in fitting data from many participants who vary in terms of how well they perform the task, how efficient their metacognition is, and how frequently they are to make different responses overall. So, we can decompose the trial-level variance into within-participant variance and between-participant variance. This strategy leads to a technique with many names: hierarchical modeling, linear mixed effects modeling, multilevel modeling.
+
+Again, let's start by simulating some data. Rather than set the parameters for each participant manually, we can simulate their parameters using a normal distribution. So, we simply need to define a mean and standard deviation for each parameter:
+```{r}
+#| label: data_simulation_participant
+d <- sim_metad_participant(
+  N_participants=10, N_trials=50,
+  mu_log_M=-0.5, sd_log_M=0.1,
+  mu_dprime=1, sd_dprime=0.1,
+  mu_c=0, sd_c=0.1,
+  mu_z_c2_0=c(-0.5, -0.5), sd_z_c2_0=c(0.25, 0.25), r_z_c2_0=diag(2),
+  mu_z_c2_1=c(-0.5, -0.5), sd_z_c2_1=c(0.25, 0.25), r_z_c2_1=diag(2)
+) |>
+  mutate(participant=factor(participant))
+d
+```
+
+
+
+#### Single-participant estimation
+Before we fit a hierarchical model, we can start by fitting each participant separately. For convenience, we'll use the same priors as before, except now we will include a predictor for the participant number (using the `R` formula `~ 1 + participant`) and put standard normal priors over the differences in parameters between participants. 
+```{r}
+#| label: spe_participant
+#| warning: false
+#| error: false
+
+# use sum-to-zero contrast coding
+contrasts(d$participant) <- contr.sum
+
+m_spe <- fit_metad(
+  bf(
+    N ~ 1 + participant,
+    dprime ~ 1 + participant,
+    c ~ 1 + participant,
+    metac2zero1diff ~ 1 + participant,
+    metac2zero2diff ~ 1 + participant,
+    metac2one1diff ~ 1 + participant,
+    metac2one2diff ~ 1 + participant
+  ),
+  data=d, init=0,
+  prior=set_prior('normal(0, 0.5)', class='Intercept') +
+    set_prior('normal(1, 0.5)', class='Intercept', dpar='dprime') +
+    set_prior('normal(0, 0.5)', class='Intercept', dpar='c') +
+    set_prior('normal(-0.5, 1)', class='Intercept',
+              dpar=metac2_parameters(K=3)) +
+    set_prior('normal(0, 1)', class='b') +
+    set_prior('normal(0, 1)', class='b', dpar=c('dprime', 'c', metac2_parameters(K=3)))
+)
+```
+
+```{r}
+summary(m_spe)
+```
+
+Because we used sum-to-zero contrast coding for participants, our model has two sets of parameters. The `Intercept` parameters reflect the average values across all participants, and the `participantX` parameters reflect the difference between the group average and participant `X`. Despite breaking our parameters down into group averages and between-participant differences, however, the parameter estimates for each participant are estimated independently.
+
+
+We can plot the estimated type 1 ROCs for each participant:
+```{r}
+#| label: spe_participant_roc1
+newdata <- distinct(d, participant)
+
+plot_roc1(d, participant, draws=roc1_draws(m_spe, newdata)) +
+  facet_wrap(~ participant)
+```
+
+On first glance, this looks really good! The model predictions are very close to the data, so what could possibly be wrong?
+
+To get an idea, let's resimulate our data from the same participants with the same ground truth parameter values. 
+```{r}
+#| label: spe_participant_resimulate
+#| warning: false
+#| error: false
+d2 <- resimulate(d)
+m_spe2 <- update(m_spe, newdata=aggregate_metad(d2, participant))
+```
+
+```{r}
+#| label: spe_participant_roc1_resimulate
+plot_roc1(d2, participant, draws=roc1_draws(m_spe2, newdata)) +
+  facet_wrap(~ participant)
+```
+
+
+If you flip back and forth between the two datasets, what stands out to you?
+
+
+Even though both datasets have the same ground truth parameters, they look very different from one another! Moreover, the model fits the data very well in both cases. Again, this might sound like a good thing, but it's actually *not* what we want. Of course we want the model to fit our data. But more importantly, we want the parameter estimates for each participant to be as close as possible to their ground truth values. In other words, we want the estimates that we would get *if we were able to collect an infinite number of trials per participant*. Since we only have a small number of trials per participant, and since metacognition is noisy, we can only trust the data from any given participant so much. This is [**Stein's paradox**](https://en.wikipedia.org/wiki/Stein%27s_example): the best estimate of a participant's parameters doesn't just use their data, but instead uses the data from all participants!
+
+The solution is for each participant's estimates to strike a balance between their empirical values and the average across all participants (sound familiar?). We can achieve this by explicitly modeling the variability between participants.
+
+
+#### Hierarchical estimation
+
+To fit the hierarchical (or multilevel) version of the model, we only need to make two changes. First, rather than simply having a coefficient for participant, we can set participant as a grouping factor using the syntax `~ 1 + (1 | participant)`, which will result in an intercept representing the group mean and an offset from the group mean for each participant. Second, instead of setting a prior directly on the differences between participants, we set a prior on the *standard deviation* of those differences:
+
+```{r}
+#| label: he_participant
+#| warning: false
+#| error: false
+
+m_he <- fit_metad(
+  bf(
+    N ~ 1 + (1 | participant),
+    dprime ~ 1 + (1 | participant),
+    c ~ 1 + (1 | participant),
+    metac2zero1diff ~ 1 + (1 | participant),
+    metac2zero2diff ~ 1 + (1 | participant),
+    metac2one1diff ~ 1 + (1 | participant),
+    metac2one2diff ~ 1 + (1 | participant)
+  ),
+  data=d, init=0,
+  prior=set_prior('normal(0, 0.5)', class='Intercept') +
+    set_prior('normal(1, 0.5)', class='Intercept', dpar='dprime') +
+    set_prior('normal(0, 0.5)', class='Intercept', dpar='c') +
+    set_prior('normal(-0.5, 1)', class='Intercept',
+              dpar=metac2_parameters(K=3)) +
+    set_prior('normal(0, 1)', class='sd') +
+    set_prior('normal(0, 1)', class='sd', dpar=c('dprime', 'c', metac2_parameters(K=3)))
+)
+```
+
+```{r}
+summary(m_he)
+```
+
+You can immediately see that this model output is a lot easier to read than the earlier one. It's separated into two sections: `Multilevel Hyperparameters`, which contains the estimates of the variability in parameters between participants, and `Regression Coefficients`, which in this case just shows the average parameter values across participants. But don't let that fool you---this model also contains estimates for each participant.
+
+```{r}
+#| label: he_participant_roc1
+plot_roc1(d, participant, draws=roc1_draws(m_he, newdata)) +
+  facet_wrap(~ participant)
+```
+
+This model also makes it easy to obtain predictions averaging across participants:
+```{r}
+#| label: he_participant_roc1_avg
+plot_roc1(d, draws=roc1_draws(m_he, tibble(.row=1), re_formula=NA))
+```
+
+Compared to the model with independent estimates for each participant, this model seems to fit the data less well. In particular, the ROCs (and estimated parameters) for each participant are shrunk toward the group average. This effect---known as *partial pooling*---is notably stronger for outlier participants. To show that this really is a good thing, let's re-fit the hierarchical model to the resimulated data:
+
+```{r}
+#| label: he_participant_resimulate
+m_he2 <- update(m_he, newdata=aggregate_metad(d2, participant))
+
+plot_roc1(d2, participant, draws=roc1_draws(m_he2, newdata)) +
+  facet_wrap(~ participant)
+```
+
+This time, even though the data for each participant looks very different from the last sample, our participant-level estimates actually look quite similar! This is the magic of hierchical models: by carefully separating within-participant and between-participant variance, we can actually obtain better parameter estimates *by fitting the data less well*!
+
+
+
+## Key takeaways
+
+We started with the goal of better understanding metacognition is measured and how it is modeled in a Bayesian framework. We covered a lot, but if you take anything away with you from this tutorial, let it be this:
+
+1. Researchers aim to construct and use measures of *metacognitive sensitivity* (i.e., how well confidence tracks accuracy) and *metacognitive bias* (i.e., how confident one is overall).
+2. Measures of metacognition need to account for first-order performance, since apparent differences in confidence ratings are expected to arise from differences in performance.
+3. Bayesian inference uses informed priors to help constrain models like the meta-$d'$ model. This often results in a less good fit of the data, but better estimates in the long run.
+4. Hierarchical models constrain participant-level parameter estimates across participants by assuming that, a priori, participants should behave somewhat like each other.
+
+
+If you have some extra time, continue on to take a deeper dive into how to interpret your model's posterior distributions!
+
+
+## Extension 1: posterior wrangling
+
+
+
+## Extension 2: significance testing
+
+
+## References
