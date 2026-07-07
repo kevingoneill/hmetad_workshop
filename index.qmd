@@ -12,3 +12,10 @@ This is the main tutorial worksheet, which focuses on the need for performance-i
 
 ## [Slides](slides/index.html){target="_blank"}
 These are the accompanying slides, which describe other measures of metacognition in more detail.
+
+## [App](https://kevingoneill.shinyapps.io/hmetad){target="_blank"}
+This is an interactive widget you can use to visualize the effects of different parameters of the meta-$d'$ model.
+
+## [Documentation](https://kevingoneill.shinyapps.io/hmetad){target="_blank"}
+This is the main documentation page for the `hmetad` package in `R`.
+
