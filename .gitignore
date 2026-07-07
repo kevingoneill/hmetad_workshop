@@ -67,3 +67,4 @@ tikz-tex
 # quarto renders
 /.quarto/
 /_site/
+**/*.quarto_ipynb

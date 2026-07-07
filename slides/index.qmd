@@ -8,7 +8,7 @@ author:
   degrees: PhD
   orcid: 0000-0001-7401-9802
   url: https://kevingoneill.github.io
-bibliography: citations.bib
+bibliography: ../citations.bib
 format: 
   ucl-revealjs:
     code-line-numbers: false
@@ -32,7 +32,7 @@ execute:
   warning: false
   message: false
   error: false
-#embed-resources: true
+embed-resources: true
 ---
 
 ```{r}

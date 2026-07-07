@@ -1,0 +1,28 @@
+project:
+  type: website
+  render:
+    - slides/index.qmd
+    - tutorial/index.qmd
+    - index.qmd
+website:
+  title: hmetad
+  site-path: /hmetad_workshop/
+  search: false
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: tutorial/index.html
+        text: Tutorial
+      - href: slides/index.html
+        text: Slides
+        target: _blank
+
+format:
+  html:
+    theme:
+      - simplex
+    toc: false
+
+
+

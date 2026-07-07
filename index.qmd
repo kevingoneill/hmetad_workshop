@@ -1,0 +1,14 @@
+---
+title: "Quantifying metacognitive performance with the `hmetad` package in `R`"
+---
+
+
+This website contains materials for a workshop on measures and Bayesian models of metacognition. 
+
+Please use the following links to access the workshop materials:
+
+## [Tutorial](tutorial/index.html)
+This is the main tutorial worksheet, which focuses on the need for performance-independent measures of metacognition, the meta-$d'$ model, and the benefits of hierarchical Bayesian estimation.
+
+## [Slides](slides/index.html){target="_blank"}
+These are the accompanying slides, which describe other measures of metacognition in more detail.

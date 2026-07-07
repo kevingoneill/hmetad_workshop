@@ -15,7 +15,7 @@ format:
     toc: true
     toc-depth: 4
     html-math-method: katex
-bibliography: citations.bib
+bibliography: ../citations.bib
 execute:
   cache: true
   warning: false
@@ -51,7 +51,7 @@ knitr:
     fig-align: center
     tidy: styler
     comment: ''
-embed-resources: true
+##embed-resources: true
 ---
 
 ```{r}
