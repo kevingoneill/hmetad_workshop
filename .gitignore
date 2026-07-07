@@ -54,10 +54,8 @@ rsconnect/
 **/#*.*#
 
 # quarto outputs
-slides.html
-slides_files
-hmetad_tutorial.html
-hmetad_tutorial_files
+slides/index_files
+tutorial/index_files
 
 
 # previous hmetad workshop materials

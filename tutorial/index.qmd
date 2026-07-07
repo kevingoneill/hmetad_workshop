@@ -95,7 +95,7 @@ Let's also define a helper function to make some plots for us:
 
 ```{r}
 #| cache: false
-source('https://github.com/kevingoneill/hmetad_workshop/raw/refs/heads/main/hmetad_tutorial_utils.R')
+source('https://github.com/kevingoneill/hmetad_workshop/raw/refs/heads/main/tutorial/hmetad_tutorial_utils.R')
 ```
 
 ## A descriptive perspective on metacognitive sensitivity
