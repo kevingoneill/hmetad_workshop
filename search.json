@@ -21,6 +21,20 @@
     "text": "Slides\nThese are the accompanying slides, which describe other measures of metacognition in more detail."
   },
   {
+    "objectID": "index.html#app",
+    "href": "index.html#app",
+    "title": "Quantifying metacognitive performance with the hmetad package in R",
+    "section": "App",
+    "text": "App\nThis is an interactive widget you can use to visualize the effects of different parameters of the meta-\\(d'\\) model."
+  },
+  {
+    "objectID": "index.html#documentation",
+    "href": "index.html#documentation",
+    "title": "Quantifying metacognitive performance with the hmetad package in R",
+    "section": "Documentation",
+    "text": "Documentation\nThis is the main documentation page for the hmetad package in R."
+  },
+  {
     "objectID": "slides/index.html#thinking-about-thinking",
     "href": "slides/index.html#thinking-about-thinking",
     "title": "Quantifying metacognitive performance with the hmetad package in R",
