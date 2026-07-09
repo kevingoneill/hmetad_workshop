@@ -87,6 +87,7 @@ First, we will need to start a fresh `R` session and include some necessary pack
 library(tidyverse)         # for plotting and data wrangling
 library(hmetad)            # for confidence modeling
 library(tidybayes)         # for wrangling posteriors
+library(bayestestR)        # for significance testing
 
 options(mc.cores=parallel::detectCores())   # fit models in parallel
 ```
@@ -792,11 +793,341 @@ We started with the goal of better understanding metacognition is measured and h
 If you have some extra time, continue on to take a deeper dive into how to interpret your model's posterior distributions!
 
 
+
+
 ## Extension 1: posterior wrangling
+
+So far, we have simply fit some models to simulated data, inspected the model summaries, and plotted the posterior distributions. But how do we actually extract a model's (prior or) posterior distribution and do anything with it?
+
+To do this, the `tidybayes` package is your friend---it provides really convenient functions to manipulate your posterior distributions. In fact, it is so useful that `hmetad` includes several functions we have already used that are modeled exactly on the `tidybayes` package! Throughout, we'll use the existing hierarchical model as an example. 
+
+The `tidybayes` package has three main functions for obtaining three kinds of model outputs:
+
+ - `linpred_draws`: obtain samples of the posterior distribution over model parameters ($M$-ratio, $d'$, etc)
+ - `epred_draws`: obtain samples of the posterior distribution over the predicted probabilities (i.e., **e**xpectation of the posterior **predictive** distribution)
+ - `predicted_draws`: obtain samples of the posterior distribution over the data (i.e., the posterior predictive distribution)
+
+
+### Obtaining model parameters
+Let's start with `linpred_draws`, which takes a model object and a dataset for which to make predictions:
+
+```{r}
+#| label: linpred_draws
+linpred_draws(m_he, newdata)
+```
+
+As you can see, here we have a dataset with one row per posterior sample (called a draw) and per row of `newdata` (here, per participant). By default, `linpred_draws` only returns samples of the main model parameter on its latent scale, which for `hmetad` means that the column `.linpred` contains samples of $\log(M)$. 
+
+If you would like the parameters returned on their true scale (i.e., $M$ instead of $\log(M)$), you can set `transform=TRUE`:
+```{r}
+#| label: linpred_draws_transform
+linpred_draws(m_he, newdata, transform=TRUE)
+```
+
+
+If you would like other parameters as well, you can include them using the `dpar` argument:
+```{r}
+#| label: linpred_draws_dpar
+linpred_draws(m_he, newdata, dpar=c('dprime', 'c'))
+```
+
+Since it can be tedious to remember all of these arguments, the `hmetad` package includes the function `linpred_draws_metad`, which returns all model parameters on their true scale:
+```{r}
+#| label: linpred_draws_metad
+linpred_draws_metad(m_he, newdata)
+```
+
+Finally, the `re_formula` argument controls which hierarchical parameters (or *random effects*) are included in the returned output. By default, all `tidybayes` functions will use all hierarchical parameters, which in this case means that it makes unique predictions for each participant. We can ignore participant-level differences by setting `re_formula=NA`. For instance, to obtain the mean parameter estimates across all participants, we can do this:
+```{r}
+#| label: linpred_draws_re_formula
+linpred_draws_metad(m_he, tibble(.row=1), re_formula=NA)
+```
+
+#### Metacognitive bias
+These functions work really well for just obtaining predictions of the model parameters themselves, which give us good measures of metacognitive efficiency, type 1 sensitivity, and type 1 response bias. But you might have noticed that there are a number of different confidence criteria, making it complicated to determine a participants' metacognitive bias (i.e., their overall level of confidence). Instead of interpreting all of these confidence criteria separately, we now recommmend computing a derived measure called meta-$\Delta$:
+
+```{r}
+#| label: metacognitive_bias_draws
+metacognitive_bias_draws(m_he, newdata)
+```
+
+This gives us a separate measure of metacognitive bias for each type 1 response (indicated by the `response` column). We do this to account for possible differences in confidence for the two responses (e.g., in a detection task a participant might be over-confident in "present" responses but under-confident in "absent" responses). If we want just a single number averaged over both responses, we can set the argument `by_response=FALSE`:
+```{r}
+#| label: metacognitive_bias_draws_response
+metacognitive_bias_draws(m_he, newdata, by_response=FALSE)
+```
+
+Note that these measures are defined in standardized units, such that $0$ represents a participant that always responds with the highest level of confidence and $\infty$ represents a participant that always responds with the lowest level of confidence.
+
+
+### Obtaining posterior summaries
+Of course it can be helpful to have a tidy dataset containing all of our posterior draws. But we will almost always want to summarize our posterior to share our results with others. In particular, we will want a measure of central tendency (i.e., mean, median, or mode) and some measure of uncertainty (i.e., posterior quantiles or highest density intervals). To get any of these, `tidybayes` includes a function named `[point]_[interval]`. For example, to get posterior medians and 95% quantiles, we can use `median_qi`:
+```{r}
+#| label: linpred_draws_median_qi
+linpred_draws_metad(m_he, tibble(.row=1), re_formula=NA) |>
+  median_qi()
+```
+
+Alternatively, for an easier-to-read output, we can use the `pivot_longer` argument to `linpred_draws_metad` and then explicitly name the column to summarize in `median_qi`:
+```{r}
+#| label: linpred_draws_longer
+linpred_draws_metad(m_he, tibble(.row=1), re_formula=NA, pivot_longer=TRUE) |>
+  median_qi(.value)
+```
+
+Yet another alternative is, instead of the `_draws` functions, to use the `_rvar` variant, which only has one row for the full posterior and displays the posterior mean and standard deviation by default:
+```{r}
+#| label: linpred_rvars
+linpred_rvars_metad(m_he, tibble(.row=1), re_formula=NA, pivot_longer=TRUE)
+```
+
+
+
+
+### Obtaining predicted probabilities
+The next kind of posterior we would like is a posterior over the predicted probabilities of the type 1 and type 2 responses, which can be obtained using `epred_draws`. Thankfully, this works just like the `linpred_draws` function:
+
+```{r}
+#| label: epred_draws
+epred_draws(m_he, newdata) |>
+  median_qi(.epred)
+```
+
+Here, the `.epred` column contains the probability that a given participant makes a given response with a given level of confidence for a given stimulus. For models fitted with `hmetad`, this is not incredibly helpful because it includes a single column `.category` which labels the stimulus and the joint type 1/type 2 response. To get a more useful output, we can use `epred_draws_metad`:
+
+```{r}
+#| label: epred_draws_metad
+epred_draws_metad(m_he, newdata) |>
+  median_qi(.epred)
+```
+
+As we have already seen in the tutorial above, this is very useful for doing prior predictive checks and posterior retrodictive checks to assess the suitability of your prior and model for describing the data. But there are a host of other kinds of model predictions that we can compute using these predicted probabilities!
+
+#### Mean confidence
+First, if we know the probability of a given type 1 and type 2 response, we can compute model predictions of mean confidence^[Note that it is preferable to compute meta-$\Delta$ instead of mean confidence as a measure of metacognitive bias, since mean confidence is confounded by type 1 performance.]:
+
+```{r}
+#| label: mean_confidence_draws
+mean_confidence_draws(m_he, newdata) |>
+  median_qi(.epred)
+```
+
+Conveniently, this provides estimates of mean confidence on the actual confidence scale used by participants. By default, this gives us a separate prediction for each `stimulus` and each type 1 `response`. If we like, we can also make predictions averaging over stimulus (`by_stimulus=FALSE`), responses (`by_response=FALSE`), or both:
+
+```{r}
+#| label: mean_confidence_draws_avg
+mean_confidence_draws(m_he, newdata, by_stimulus=FALSE, by_response=FALSE) |>
+  median_qi(.epred)
+```
+
+Finally, we can also get predictions by accuracy as a data-driven index of metacognitive sensitivity^[Again, it is preferable to use $M$-ratio because difference in mean confidence is confounded by type 1 performance]:
+```{r}
+#| label: mean_confidence_draws_correct
+mean_confidence_draws(m_he, newdata, by_correct=TRUE) |>
+  median_qi(.epred)
+```
+
+
+#### Receiver operating characteristic curves
+As we have already seen above, we can also use similar functions to get the type 1 ROC:
+
+```{r}
+#| label: roc1_draws
+roc1_draws(m_he, newdata) |>
+  median_qi(p_hit, p_fa)
+```
+
+And the type 2 ROC:
+```{r}
+#| label: roc2_draws
+roc2_draws(m_he, newdata) |>
+  median_qi(p_hit2, p_fa2)
+```
+
+
+
+### Obtaining simulated data
+The last kind of posterior distribution we can obtain is a posterior over *simulated data*. That is, given our fitted model parameters (and our uncertainty in them), we can directly simulate data with the `predicted_draws` function. Importantly, to use this function, we need to include a column `N` in `newdata` which represents the number of trials to simulate:
+
+```{r}
+#| label: predicted_draws
+newdata |>
+  mutate(N=100) |>
+  predicted_draws(m_he, newdata=_) |>
+  median_qi(.prediction)
+```
+
+In this output, the `.prediction` column contains the simulated number of trials with the corresponding stimulus and type 1/type 2 response. As with `epred_draws`, it is usually more convenient to use the corresponding `hmetad` function `predicted_draws_metad`:
+```{r}
+#| label: predicted_draws_metad
+newdata |>
+  mutate(N=100) |>
+  predicted_draws_metad(m_he, newdata=_) |>
+  median_qi(.prediction)
+```
+
+We won't go into more details here, but being able to simulate data in this way is critical for performing simulation-based power analyses to detect the required sample size (number of participants, trials, stimuli, etc) for a given effect size of interest.
+
+
+### Wrapping up
+That is a *lot* of different quantities that we can extract from our model! Of course, it is usually not necessary to investigate all of these outputs. Instead, it is usually best to pick a small number of measures that answer your key research questions.
+
+Thankfully, regardless of which measure you are interested in, the `hmetad` package provides a common interface to extract your model's predictions.
+
+
 
 
 
 ## Extension 2: significance testing
+Now that we know how to get model predictions, the last thing we will likely need to do in a research project is to compare our model predictions under different conditions.
+
+To demonstrate this, we will require a dataset with within-participant conditions:
+```{r}
+#| label: sim_participant_condition
+d <- sim_metad_participant_condition(
+  N_participants=20, N_trials=200,
+  mu_log_M=c(0, -1)
+) |>
+  mutate(condition=factor(condition))
+d
+```
+
+Next, we'll fit another hierarchical model, but this time with group-level and participant-level effects of condition^[For now, we'll just use the same priors as before, except with additional standard normal priors over our coefficients] (note that this model will likely take some time to fit):
+```{r}
+#| label: fit_participant_condition
+#| warning: false
+#| error: false
+m <- fit_metad(
+  bf(
+    N ~ condition + (condition | participant),
+    dprime ~ condition + (condition | participant),
+    c ~ condition + (condition | participant),
+    metac2zero1diff ~ condition + (condition | participant),
+    metac2zero2diff ~ condition + (condition | participant),
+    metac2zero3diff ~ condition + (condition | participant),
+    metac2one1diff ~ condition + (condition | participant),
+    metac2one2diff ~ condition + (condition | participant),
+    metac2one3diff ~ condition + (condition | participant)
+  ),
+  data=d, init=0,
+  prior=set_prior('normal(0, 0.5)', class='Intercept') +
+    set_prior('normal(1, 0.5)', class='Intercept', dpar='dprime') +
+    set_prior('normal(0, 0.5)', class='Intercept', dpar='c') +
+    set_prior('normal(-0.5, 1)', class='Intercept',
+              dpar=metac2_parameters(K=4)) +
+    set_prior('normal(0, 1)', class='b') +
+    set_prior('normal(0, 1)', class='b', dpar=c('dprime', 'c', metac2_parameters(K=4))) +
+    set_prior('normal(0, 1)', class='sd') +
+    set_prior('normal(0, 1)', class='sd', dpar=c('dprime', 'c', metac2_parameters(K=4)))
+)
+summary(m)
+```
+
+Since our model has a lot of parameters, the model summary is quite massive. But, if we sift through it, we can see that there may be an effect of condition on $M$-ratio (`condition2`) and on $d'$ (`dprime_condition2`), since these parameters have 95% credible intervals that exclude zero.
+
+But what do these coefficients actually correspond to? And how do we know whether the difference is actually significant?
+
+
+### Contrasts and comparisons
+To find out, let's get model predictions of our parameters for each condition, averaging over participants:
+```{r}
+#| label: epred_draws_metad_condition
+newdata <- d |> distinct(condition)
+
+draws <- linpred_draws_metad(m, newdata, re_formula=NA, pivot_longer=TRUE)
+draws
+```
+
+To compare model parameters across the conditions, we can use the `tidybayes` function `compare_levels`:
+```{r}
+#| label: compare_levels
+draws |>
+  compare_levels(.value, by=condition) |>
+  median_qi(.value)
+```
+
+Comparing the contrasts to our model summary above, we can determine that the model coefficients are simply the difference in parameters between conditions `1` and `2`! The one caveat is that the model coefficients are on a latent scale---for example, the coefficients represent differences in $\log(M)$ instead of $M$. We won't bother transforming the parameters back to the log scale, but for publications it is usually best to test differences on this latent scale.
+
+If we want, we can go through this same process looking at each participant individually:
+
+```{r}
+#| label: compare_levels_participant
+newdata <- d |> distinct(participant, condition)
+
+linpred_draws_metad(m, newdata, pivot_longer=TRUE) |>
+  compare_levels(.value, by=condition) |>
+  median_qi(.value)
+```
+
+As expected, we see pretty strong variation in the effect of `condition` on $M$-ratio across participants.
+
+
+
+Finally, it's important to note that we can in principle perform any kind of contrast or transformation of these parameters that we want. For example, if we compute differences of differences, we can estimate interaction effects. Or, if we don't want to compute differences of $\log(M)$, then it's equivalent for us to compute ratios of $M$. In any case, the important thing is to perform any computations independently for each posterior draw, waiting to summarize the posterior until all of those computations are done.
+
+
+
+### Bayesian significance testing
+
+The last thing we would need to do for publication-ready results is to compute a Bayesian index of statistical significance. There are a few different ways of testing for significance in a Bayesian framework, and this tutorial is not meant to thoroughly explain them all. For a definitive resource, see @makowski2019indices.
+
+Instead, for the purposes of this tutorial, we will focus on computing a particular kind of Bayes Factor known as the Savage-Dickey ratio. What this measure will tell us is whether our data have changed our beliefs about the differences between conditions. That is, we don't just care about whether the difference is likely under our posterior distribution, we also care about how likely we thought that difference was even before seeing the data. 
+
+:::{.callout-important}
+Since the Bayes Factor is just comparing the posterior and prior probability of a difference of zero, by definition **you will get a different Bayes Factor if you use different priors**. This feature of Bayes Factors tends to scare people, but there are two things to keep in mind:
+
+First, we should be choosing sensible priors before seeing our data (using e.g. a prior predictive check) regardless of whether we want to use Bayes Factors or not. Our priors don't have to be perfect, and within reason, the results won't change *that much* under slightly different priors. The most essential thing is that your priors are scientifically defensible, meaning that you can explain to other researchers why you made the choice that you did.
+
+Second, even if Bayes Factors are sensitive to the choice of prior, the posterior distribution itself will typically change very little with the prior. This is because, as you collect more and more data, the posterior will always converge eventually to the true value. So, for well-powered experiments, the data are usually much more informative than the prior.
+:::
+
+
+As a result, we'll need to know what kind of differences we expected under our prior distribution. So, let's run a quick model ignoring the data:
+```{r}
+#| label: prior_participant_condition
+m.prior <- update(m, sample_prior='only')
+```
+
+Now, all we have to do is pull out whatever difference we would like to compute from both our prior and our posterior, then compare them against each other. First, let's just get our model coefficients (here I'm using `tidybayes::gather_draws` to directly extract the model coefficients---you can get the same results by computing the contrasts manually as we did above):
+```{r}
+#| label: gather_draws
+draws.post <- gather_draws(m, `b(_.+)*_condition2`, regex=TRUE)
+draws.prior <- gather_draws(m.prior, `b(_.+)*_condition2`, regex=TRUE)
+draws.post
+```
+
+Next, we want to join these data frames together:
+```{r}
+#| label: join_prior_posterior
+draws <- draws.prior |>
+  rename(.prior=.value) |>
+  left_join(draws.post)
+draws
+```
+
+Finally, we simply have to call `bayestestR::bf_pointnull` to calculate a Bayes Factor:
+```{r}
+#| label: bayes_factor
+draws |>
+  mutate(BF=as.numeric(bf_pointnull(.value, .prior))) |>
+  median_qi(.value, .prior, BF) |>
+  select(-BF.upper, -BF.lower) |>
+  arrange(desc(BF)) |>
+  mutate(BF_01=1/BF)
+```
+
+In this output, I have used the `arrange` function to sort each coefficient by its statistical significance. The `.value` columns contain the posterior distribution summaries, the `.prior` columns contain the prior distribution summaries, and the `BF` column contains the Bayes Factor, which is a ratio. Specifically, when $BF = 1$, the alternative hypothesis (here, that the difference is non-zero) is equally likely under the prior and the posterior, which means the data did not tell us anything about that difference. When $BF > 1$, the alternative hypothesis is $BF$ times more likely under the posterior than under the prior, which means that the data has increased our belief in the alternative factor by a factor of $BF$. Likewise, when $BF$ < 1, the alternative hypothesis is $\frac{1}{BF}$ times as likely under the prior compared to the posterior, which means that the data has increased our belief in the null hypothesis.
+
+To make things more clear, the only parameters that have $BF > 1$ are $M$-ratio and $d'$: this makes sense, since these parameters also have credible intervals that exclude zero. But while the $BF$ for $M$-ratio is quite large (with the alternative being ~200x more likely after seeing the data!), the $BF$ for $d'$ is only suggestive (with the alternative being only ~3x more likely). All of the other model parameters have $BF < 1$, which means that they support the null hypothesis to varying degrees (the $BF$s in support of the null are stored in the column `BF_01` for convenience).
+
+Typically, researchers tend to use $BF=10$ as a practical cut-off for strong support for the alternative hypothesis. But whereas the dichotomy between significance and non-significance induced by $p$-values is necessary, for Bayes Factors we are encouraged to use more graded language. For instance, since the condition effect of $d'$ has $BF \approx 3$, one might say that there is only weak evidence for a difference in $d'$ across conditions, encouraging people not to take this effect too seriously (indeed, the true difference here is zero!). In contrast, we might say that we have moderate to strong evidence against a difference in confidence criteria between conditions and that there is strong evidence for a difference in $M$-ratio across conditions. This might not sound like that much of an improvement, but it allows us to (a) distinguish between results that are ambiguous or under-powered from those that genuinely support the null hypothesis, and (b) discuss our findings with nuance and humility.
+
+
+
+
+### Wrapping up
+If you've followed along this far, you have gone through the full analysis pipeline from model specification, model fitting, checking model fit, making figures, computing contrasts, and finally testing for significance! While this is a good enough start to get you on your feet, there is much more to learn about Bayesian statistics that can be useful in your own research. For a really nice overview, I recommend checking out the [`bayestestR` documentation](https://easystats.github.io/bayestestR/index.html), which has lots of really great explanations of different approaches and links to plenty of other resources.
+
 
 
 ## References

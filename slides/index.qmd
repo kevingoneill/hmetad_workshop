@@ -943,13 +943,35 @@ questioned [@rausch2023; @xue2021examining]
 
 
 
+## Alternative approaches
+
+There are a wide range of other kinds of models of confidence:
+
+:::{.incremental .much-smaller}
+- Bayesian models [@fleming2017self; @mamassian2025confidence; @boundy2023confidence; @kozyra2026]
+- Temporally dynamic models [@maniscalco2021; @desender2022dynamic; @hellmann2024confidence]
+- Post-decisional models [@navajas2016post; @hellmann2024confidence]
+- Models of global metacognition [@katyal2025; @rouault2019forming]
+:::
+
+::: {.fragment}
+Helpful reviews [@rausch2023; @rahnev2025comprehensive]
+:::
+
+## Entry points into the literature
+
+- @fleming2024metacognition
+- @mamassian2016visual
+- @rahnev2022consensus
+- @rahnev2021visual
+- @peters2022towards
 
 # Over to you! {.dark}
 
 <br>
 
 Open `hmetad_tutorial.html` in your browser and follow along the instructions.
-
+o
 If you can't get it installed/running, let me know! Otherwise, you can look at the pre-generated outputs.
 
 
