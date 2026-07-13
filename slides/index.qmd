@@ -17,7 +17,7 @@ format:
 filters:
   - tikz
 tikz:
-  cache: true
+  cache: false
   save-tex: false
   tex-dir: tikz-tex   # any path; defaults to 'tikz-tex'
   svg-command: "pdf2svg {input} {output}"  # use pdf2svg because inkscape breaks fonts
