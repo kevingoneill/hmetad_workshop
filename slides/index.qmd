@@ -50,20 +50,31 @@ PALETTE <- paletteer_d("fishualize::Phractocephalus_hemioliopterus")[c(1, 3)]
 DIST_COLOR <- paletteer_d("fishualize::Phractocephalus_hemioliopterus")[4]
 DELTA_COLOR <- paletteer_d("fishualize::Phractocephalus_hemioliopterus")[2]
 
+set_theme(theme_bw(base_size=18, ink='black', paper='#fafafa'))
+
 THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
-                      expand=expansion(mult=c(.1, .1))) {
+                      expand=expansion(mult=c(.1, .1)),
+                      ink='black', paper='#fafafa') {
   list(
     scale_x_continuous(xlab, limits=limits, breaks=seq(-4, 4, by=2), expand=expand),
     scale_color_manual('Stimulus', values=PALETTE),
     scale_fill_manual('Stimulus', values=PALETTE),
     scale_y_continuous(expand=c(0, 0)),
-    theme_classic(base_size=base_size),
+    theme_classic(base_size=base_size, ink=ink, paper=paper),
     theme(axis.title.y=element_blank(),
-      axis.text.y=element_blank(),
-      axis.ticks.y=element_blank(),
-      axis.line.y=element_blank())
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.line.y=element_blank())
   )
 }
+
+## display a box over a plot for animations
+hide_plot <- function(plot, fill='#fafafa') {
+  plot + inset_element(plot_spacer() +
+                         theme(plot.background=element_rect(fill=fill)),
+                       0, 0, 1, 1, align_to='full')
+}
+
 ```
 
 # <https://metacoglab.github.io/hmetad_workshop> { .dark style="font-size: 0.6em" }
@@ -152,7 +163,7 @@ THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
 :::
 
 
-## Type 1 and type 2 decisions
+## Type I and Type II decisions
 :::{.r-stack height=600}
 
 ::::{.fragment .center-flex}
@@ -173,8 +184,8 @@ THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
 	\path[hidden] (stimulus) edge (response);
 	\path[hidden] (response) edge (confidence);
     
-    \node[unboxed, hidden] (type1) [below = 0.5cm of response] { Type 1 \\ Decision };
-    \node[unboxed, hidden] (type2) [below = 0.5cm of confidence] { Type 2 \\ Decision };
+    \node[unboxed, hidden] (type1) [below = 0.5cm of response] { Type I \\ Decision };
+    \node[unboxed, hidden] (type2) [below = 0.5cm of confidence] { Type II \\ Decision };
 \end{tikzpicture}
 ```
 ::::
@@ -197,8 +208,8 @@ THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
 	\path (stimulus) edge (response);
 	\path[hidden] (response) edge (confidence);
     
-    \node[unboxed, hidden] (type1) [below = 0.5cm of response] { Type 1 \\ Decision };
-    \node[unboxed, hidden] (type2) [below = 0.5cm of confidence] { Type 2 \\ Decision };
+    \node[unboxed, hidden] (type1) [below = 0.5cm of response] { Type I \\ Decision };
+    \node[unboxed, hidden] (type2) [below = 0.5cm of confidence] { Type II \\ Decision };
 \end{tikzpicture}
 ```
 ::::
@@ -221,8 +232,8 @@ THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
 	\path (stimulus) edge (response);
 	\path (response) edge (confidence);
     
-    \node[unboxed, hidden] (type1) [below = 0.5cm of response] { Type 1 \\ Decision };
-    \node[unboxed, hidden] (type2) [below = 0.5cm of confidence] { Type 2 \\ Decision };
+    \node[unboxed, hidden] (type1) [below = 0.5cm of response] { Type I \\ Decision };
+    \node[unboxed, hidden] (type2) [below = 0.5cm of confidence] { Type II \\ Decision };
 \end{tikzpicture}
 ```
 ::::
@@ -245,21 +256,21 @@ THEME_SDT <- function(xlab='Evidence', limits=c(-2.5, 2.5), base_size=18,
 	\path (stimulus) edge (response);
 	\path (response) edge (confidence);
     
-    \node[unboxed] (type1) [below = 0.5cm of response] { Type 1 \\ Decision };
-    \node[unboxed] (type2) [below = 0.5cm of confidence] { Type 2 \\ Decision };
+    \node[unboxed] (type1) [below = 0.5cm of response] { Type I \\ Decision };
+    \node[unboxed] (type2) [below = 0.5cm of confidence] { Type II \\ Decision };
 \end{tikzpicture}
 ```
 ::::
 :::
 
-## Type 1 and type 2 decisions
+## Type I and Type II decisions
 
 <br>
 
 ::: {.columns }
 
 :::: { .column .dark .box .much-smaller width="40%"}
-### Type 1
+### Type I
 
 Decision about the world
 
@@ -275,7 +286,7 @@ Decision about the world
 ::::
 
 :::: { .column .fragment .dark .box .much-smaller width="40%"}
-### Type 2
+### Type II
 
 Decision about yourself
  
@@ -294,7 +305,7 @@ Decision about yourself
 
 
 
-## Quantifying type 1 decisions
+## Quantifying Type I decisions
 To understand how well someone performs a task, why not just calculate:
 
 :::{.incremental .smaller}
@@ -309,7 +320,7 @@ To understand how well someone performs a task, why not just calculate:
 :::
 
 
-## Quantifying type 1 decisions
+## Quantifying Type I decisions
 
 :::{.columns}
 ::::{.column width="40%" .fragment .dark .box .much-smaller}
@@ -345,7 +356,7 @@ evidence <- tibble(stimulus=factor(0:1),
 
 p <- ggplot(evidence, aes(xdist=dist_normal(mu1, sd))) +
   stat_slab(aes(fill=stimulus), color=NA, alpha=ALPHA, scale=.8, show.legend=FALSE) +
-  THEME_SDT(xlab='Type 1 Evidence', expand=expansion())
+  THEME_SDT(xlab='Type I Evidence', expand=expansion())
 p
 ```
 ::::
@@ -391,7 +402,7 @@ p
 :::
 
 
-## Quantifying type 2 decisions
+## Quantifying Type II decisions
 :::{.columns}
 ::::{.column width="40%" .fragment .dark .box .much-smaller}
 #### Metacognitive sensitivity
@@ -413,11 +424,11 @@ How much evidence is required to respond with high confidence?
 
 :::{.much-smaller}
 ::::{.fragment}
-We would like the same dissociation as for type 1 decisions
+We would like the same dissociation as for Type I decisions
 ::::
 
 ::::{.fragment}
-But now we need to control for type 1 sensitivity and bias!
+But now we need to control for Type I sensitivity and bias!
 ::::
 :::
 
@@ -476,7 +487,7 @@ phi = cor(accuracy, confidence)
 :::
 
 ::: { .tiny .right .bottom}
-@fleming2014
+@fleming2014; @masson2009
 :::
 
 ## Should I use correlational measures?
@@ -489,13 +500,13 @@ phi = cor(accuracy, confidence)
 
 #### Cons {.fragment}
 :::{.incremental .much-smaller}
-- Confounded by type 1 performance
+- Confounded by Type I performance
 - Confounded by metacognitive bias
 - Requires careful controls to compare between conditions
 :::
 
 
-## Area under type 2 ROC (AUROC2)
+## Area under Type II ROC (AUROC2)
 
 :::{.r-stack}
 
@@ -516,7 +527,8 @@ d.roc2 <- d |>
     p_fa2=1-cumsum(p_0)) |>
   complete(tibble(confidence=1, p_hit2=1, p_fa2=1))
 
-roc2_plot <- function(d, ..., k=NULL, shade=FALSE, point=TRUE) {
+roc2_plot <- function(d, ..., k=NULL, shade=FALSE, point=TRUE,
+                      paper='#fafafa', ink='black') {
   terms <- names(enquos(..., .named=TRUE))
   p <- NULL
 
@@ -538,7 +550,7 @@ roc2_plot <- function(d, ..., k=NULL, shade=FALSE, point=TRUE) {
     coord_fixed(xlim=c(0, 1), ylim=c(0, 1), expand=FALSE) +
     scale_x_continuous('P(Confidence ≥ k | Incorrect)', limits=0:1) +
     scale_y_continuous('P(Confidence ≥ k | Correct)', limits=0:1) +
-    theme_bw(18) +
+    theme_bw(18, paper=paper, ink=ink) +
     theme(panel.grid=element_blank())
 
   if (shade) {
@@ -551,7 +563,8 @@ roc2_plot <- function(d, ..., k=NULL, shade=FALSE, point=TRUE) {
   p + geom_path()
 }
 
-ROC2_combo <- function(d_conf, d_roc2, k=NULL, filter=TRUE, shade=FALSE) {
+ROC2_combo <- function(d_conf, d_roc2, k=NULL, filter=TRUE, shade=FALSE,
+                       paper='#fafafa', ink='black') {
   if (is.null(k)) {
     k <- n_distinct(d$confidence) + 1
   }
@@ -563,13 +576,13 @@ ROC2_combo <- function(d_conf, d_roc2, k=NULL, filter=TRUE, shade=FALSE) {
     ggplot(aes(x=confidence, y=p, group=correct, fill=correct)) +
     xlab('Confidence') +
     scale_fill_manual('Correct', values=PALETTE) +
-    theme_classic(18, paper=alpha('white', 0)) +
+    theme_classic(18, paper=paper, ink=ink) +
     theme(axis.title.y=element_blank(),
-      axis.text.y=element_blank(),
-      axis.ticks.y=element_blank(),
-      axis.line.y=element_blank())
-
-  plot.roc2 <- roc2_plot(d_roc2, k=k, shade=shade) +
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.line.y=element_blank())
+  
+  plot.roc2 <- roc2_plot(d_roc2, k=k, shade=shade, paper=paper, ink=ink) +
     theme(axis.title.x=element_text(color=PALETTE[1]),
       axis.title.y=element_text(color=PALETTE[2]))
   
@@ -698,7 +711,7 @@ expand_grid(
 ```
 
 :::{.fragment .smaller}
-Does not control for type 1 performance!
+Does not control for Type I performance!
 :::
 
 ## Should I use AUROC2?
@@ -711,8 +724,8 @@ Does not control for type 1 performance!
 
 #### Cons {.fragment}
 :::{.incremental .much-smaller}
-- Confounded by type 1 performance
-- Confounded by type 1 response bias
+- Confounded by Type I performance
+- Confounded by Type I response bias
 - Requires controlling for performance (experimentally or statistically)
 :::
 
@@ -785,65 +798,19 @@ Does not control for type 1 performance!
 p.type1 <- ggplot(evidence, aes(xdist=dist_normal(mu1, sd))) +
   stat_slab(aes(fill=stimulus), color=NA, alpha=.2, scale=.8, show.legend=FALSE) +
   geom_vline(aes(xintercept=c)) +
-  THEME_SDT(xlab='Type 1 Evidence', expand=expansion())
-
-((p.type1 /
-    plot_spacer() +
-    plot_layout(heights=c(1, 1.525))) |
-   plot_spacer()) +
-  plot_layout(widths=c(1.57, 1))
-```
-::::
-
-::::{.fragment}
-```{r}
-#| label: type2_evidence_2
-#| fig-width: 18
-#| fig-height: 6
+  THEME_SDT(xlab='Type I Evidence', expand=expansion())
 p.type2.0 <- ggplot(evidence, aes(xdist=dist_truncated(dist_normal(mu2, sd), upper=c))) +
   stat_slab(aes(fill=stimulus), color=NA, alpha=ALPHA, scale=.8, show.legend=FALSE) +
   geom_vline(xintercept=first(evidence$c)) +
-  THEME_SDT(xlab='Type 2 Evidence\n("0" Response)', limits=c(-2.5, first(evidence$c)),
-    expand=expansion(add=c(0, 0.01)))
+  THEME_SDT(xlab='Type II Evidence\n("0" Response)', limits=c(-2.5, first(evidence$c)),
+            expand=expansion(add=c(0, 0.01)))
 p.type2.1 <- ggplot(evidence, aes(xdist=dist_truncated(dist_normal(mu2, sd), lower=c))) +
   stat_slab(aes(fill=stimulus), color=NA, alpha=ALPHA, scale=.8, show.legend=FALSE) +
   geom_vline(xintercept=first(evidence$c)) +
-  THEME_SDT(xlab='Type 2 Evidence\n("1" Response)', limits=c(first(evidence$c), 2.5),
-    expand=expansion(add=c(.01, 0)))
-
+  THEME_SDT(xlab='Type II Evidence\n("1" Response)', limits=c(first(evidence$c), 2.5),
+            expand=expansion(add=c(.01, 0)))
 offset <- (first(evidence$c)+2.5) / 5
 
-((p.type1 /
-    ((p.type2.0 | p.type2.1) +
-       plot_layout(widths=c(offset, 1-offset)))) |
-   plot_spacer()) +
-  plot_layout(widths=c(1.57, 1))
-```
-::::
-
-::::{.fragment}
-```{r}
-#| label: type2_evidence_3
-#| fig-width: 18
-#| fig-height: 6
-p.type2.0 <- p.type2.0 +
-  geom_vline(xintercept=-1, linetype='dashed', color=PALETTE[1])
-p.type2.1 <- p.type2.1 +
-  geom_vline(xintercept=1, linetype='dashed', color=PALETTE[2])
-
-((p.type1 /
-    ((p.type2.0 | p.type2.1) +
-       plot_layout(widths=c(offset, 1-offset)))) |
-   plot_spacer()) +
-  plot_layout(widths=c(1.57, 1))
-```
-::::
-
-::::{.fragment}
-```{r}
-#| label: type2_evidence_4
-#| fig-width: 18
-#| fig-height: 6
 p.roc2 <- expand_grid(
   meta_c2_1=seq(0, 5, by=.01)[-1],
   stimulus=0:1,
@@ -876,6 +843,52 @@ p.roc2 <- expand_grid(
   (response==0 & meta_c2_1 == 1) |
     (response==1 & meta_c2_1 == 1)))
 
+
+((p.type1 /
+    hide_plot((p.type2.0 | p.type2.1) +
+                plot_layout(widths=c(offset, 1-offset)))) |
+   hide_plot(p.roc2)) +
+  plot_layout(widths=c(2.5, 1))
+```
+::::
+
+::::{.fragment}
+```{r}
+#| label: type2_evidence_2
+#| fig-width: 18
+#| fig-height: 6
+
+((p.type1 /
+    ((p.type2.0 | p.type2.1) +
+       plot_layout(widths=c(offset, 1-offset)))) |
+   hide_plot(p.roc2)) +
+  plot_layout(widths=c(2.5, 1))
+```
+::::
+
+::::{.fragment}
+```{r}
+#| label: type2_evidence_3
+#| fig-width: 18
+#| fig-height: 6
+p.type2.0 <- p.type2.0 +
+  geom_vline(xintercept=-1, linetype='dashed', color=PALETTE[1])
+p.type2.1 <- p.type2.1 +
+  geom_vline(xintercept=1, linetype='dashed', color=PALETTE[2])
+
+((p.type1 /
+    ((p.type2.0 | p.type2.1) +
+       plot_layout(widths=c(offset, 1-offset)))) |
+   hide_plot(p.roc2)) +
+  plot_layout(widths=c(2.5, 1))
+```
+::::
+
+::::{.fragment}
+```{r}
+#| label: type2_evidence_4
+#| fig-width: 18
+#| fig-height: 6
 ((p.type1 /
     ((p.type2.0 | p.type2.1) +
        plot_layout(widths=c(offset, 1-offset)))) |
@@ -886,14 +899,14 @@ p.roc2 <- expand_grid(
 :::
 
 :::{.fragment .much-smaller}
-If we make assumptions about the distribution of evidence,<br>we can *model* the type 2 ROC!
+If we make assumptions about the distribution of evidence,<br>we can *model* the Type II ROC!
 :::
 
 ## Taxonomy of metacognitive measures
 
 :::{.incremental}
 - **Metacognitive sensitivity**: how much information one has about the stimulus when making confidence ratings (i.e., $\textrm{meta-}d'$)
-- **Metacognitive efficiency**: metacognitive capacity, relative to type 1 performance (i.e., $M = \frac{\textrm{meta-}d'}{d'}$)
+- **Metacognitive efficiency**: metacognitive capacity, relative to Type I performance (i.e., $M = \frac{\textrm{meta-}d'}{d'}$)
 - **Metacognitive bias**: overall level of confidence (i.e., $\textrm{meta-}\Delta$, based on $\textrm{meta-}c_2$)
 :::
 
@@ -902,7 +915,7 @@ If we make assumptions about the distribution of evidence,<br>we can *model* the
 **Bayesian inference**
 
 :::{.fragment .much-smaller}
-Determine the model parameters (e.g., $\textrm{meta-}d'$, $\textrm{meta-}c_2$) are most likely given the participant's observed type 1 and type 2 responses
+Determine the model parameters (e.g., $\textrm{meta-}d'$, $\textrm{meta-}c_2$) are most likely given the participant's observed Type I and Type II responses
 :::
 
 :::{.fragment}
@@ -933,7 +946,7 @@ In the `hmetad` package, we approximate this calculation using the probabilistic
 #### Pros
 :::{.incremental .much-smaller}
 - Provides principled metric for metacognitive sensitivity
-- Takes into account both type 1 and type 2 response biases
+- Takes into account both Type I and Type II response biases
 - Easy to control for performance (e.g. using $M = \frac{\textrm{meta-}d'}{d'}$)
 - Allows hierarchical modeling of participants/stimuli
 :::
@@ -942,7 +955,7 @@ In the `hmetad` package, we approximate this calculation using the probabilistic
 :::{.incremental .much-smaller}
 - Currently only developed for 2-choice discrimination tasks
 - Equal-variance Gaussian assumptions may not hold for some tasks
-- Claims of invariance to type 1 criterion and type 2 bias have been
+- Claims of invariance to Type I criterion and Type II bias have been
 questioned [@rausch2023; @xue2021examining]
 :::
 
@@ -1052,7 +1065,7 @@ fail to account for uncertainty
 
 ## Advantages of hierarchical Bayesian modeling
 
-![](https://oup.silverchair-cdn.com/oup/backfile/Content_public/Journal/nc/2017/1/10.1093_nc_nix007/5/nix007f5.jpeg?Expires=1786381562&Signature=U4W68U-cOWTIZfO0tNeHay81sTS4bVHKgIN4laJoZHOBz71uSPdgCkXPam6FW8MmAPY5MpDRhXX8mw-3s18Ds4py33SdbpsnqEy9cVRU53bgG5nkA2hu~1902QQn4kz2~PzIMheecidJ-03s4ycXFgmuXcNU5DjBBmT21E19iJS3wr7yjcmIm1vQaxIIp0uVnnF33y0oEOLafV-kmGTp9Za6zmVhU~94kX2Bt5-lkSTAL7BPdKBfbfxwkg2zB5Qb~Z1srkx8js2KnHNttCmTePraTvhZ5qivYFinin8gmuyOsrs82dsgbuK3i~kwalbAXSGxYc-0B4JQYki9vDNvFw__&Key-Pair-Id=APKAIE5G5CRDK6RD3PGA){.nostretch width=900 .center-horizontally}
+![](figures/fleming2017.jpeg){.nostretch width=900 .center-horizontally}
 
 :::{.tiny .bottom .right}
 @fleming2017

@@ -156,7 +156,7 @@ In order to see what might happen when metacognition is impaired, we can simulat
 d <- d |> mutate(metacognition='high')
 
 # create a new dataset with "low" metacognition and join them together
-d_metacognition <- sim_metad(N_trials=10000, dprime=1.5, log_M=-1) |>
+d_metacognition <- sim_metad(N_trials=10000, dprime=1.5, M=exp(-1)) |>
   mutate(metacognition='low') |>
   bind_rows(d)
 d_metacognition
@@ -408,7 +408,7 @@ To start, let's imagine we have data from just a single participant. To make thi
 ```{r}
 #| label: data_simulation_spe
 d <- sim_metad(
-  N_trials=50, log_M=-0.5,
+  N_trials=50, M=exp(-0.5),
   dprime=1.5, c=0,
   c2_0_diff=c(0.5, 0.5), c2_1_diff=c(0.5, 0.5)
 )
@@ -636,11 +636,11 @@ Again, let's start by simulating some data. Rather than set the parameters for e
 #| label: data_simulation_participant
 d <- sim_metad_participant(
   N_participants=10, N_trials=50,
-  mu_log_M=-0.5, sd_log_M=0.1,
-  mu_dprime=1, sd_dprime=0.1,
-  mu_c=0, sd_c=0.1,
-  mu_z_c2_0=c(-0.5, -0.5), sd_z_c2_0=c(0.25, 0.25), r_z_c2_0=diag(2),
-  mu_z_c2_1=c(-0.5, -0.5), sd_z_c2_1=c(0.25, 0.25), r_z_c2_1=diag(2)
+  mean_M=-0.5, sd_M=0.1,
+  mean_dprime=1, sd_dprime=0.1,
+  mean_c=0, sd_c=0.1,
+  mean_z_c2_0=c(-0.5, -0.5), sd_z_c2_0=c(0.25, 0.25), r_z_c2_0=diag(2),
+  mean_z_c2_1=c(-0.5, -0.5), sd_z_c2_1=c(0.25, 0.25), r_z_c2_1=diag(2)
 ) |>
   mutate(participant=factor(participant))
 d
@@ -987,7 +987,7 @@ To demonstrate this, we will require a dataset with within-participant condition
 #| label: sim_participant_condition
 d <- sim_metad_participant_condition(
   N_participants=20, N_trials=200,
-  mu_log_M=c(0, -1)
+  mean_M=c(0, -1)
 ) |>
   mutate(condition=factor(condition))
 d

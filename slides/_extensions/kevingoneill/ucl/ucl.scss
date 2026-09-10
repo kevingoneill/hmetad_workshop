@@ -24,10 +24,10 @@ $ucl-light-green: #1aab40;
 
 
 
-$body-bg: $ucl-pale-purple;
+$body-bg: $ucl-white;
 $body-color: $ucl-dark-purple;
 $text-muted: $ucl-pale-purple;
-$link-color: $ucl-bright-purple;
+$link-color: $ucl-light-purple;
 $link-color-hover: $ucl-mid-purple;
 $selection-bg: $ucl-heritage-blue;
 $selection-color: $ucl-dark-purple;
@@ -192,6 +192,13 @@ $mermaid-node-fg-color: $ucl-dark-purple;
 
 
 /*-- scss:rules --*/
+.slide-logo {
+    content: url('https://cdn.ucl.ac.uk/logos/ucl/ucl-logo--primary.svg');
+}
+
+.has-dark-background .slide-logo {
+    content: url('https://cdn.ucl.ac.uk/logos/ucl/ucl-logo--primary-inverted.svg');
+}
 
 .reveal .dark {
   background-color: $ucl-dark-purple;
@@ -203,6 +210,9 @@ $mermaid-node-fg-color: $ucl-dark-purple;
 }
 
 .box {
+    background-color: $ucl-light-purple;
+    color: $ucl-dark-purple;
+    
     border-radius: 25px;
     padding: 25px;
 }
@@ -241,14 +251,30 @@ $mermaid-node-fg-color: $ucl-dark-purple;
     font-size: 0.5em;
 }
 
+.extra-tiny {
+    font-size: 0.33em;
+}
+
+.larger {
+    font-size: 1.5em;
+}
+
+.much-larger {
+    font-size: 2em;
+}
+
+.huge {
+    font-size: 4em;
+}
+
 .right {
     position: absolute;
-    right: 0;
+    right: 10px;
 }
 
 .bottom {
     position: absolute;
-    bottom: 0;
+    bottom: 10px;
 }
 
 
