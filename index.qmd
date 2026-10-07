@@ -16,6 +16,6 @@ These are the accompanying slides, which describe other measures of metacognitio
 ## [App](https://kevingoneill.shinyapps.io/hmetad){target="_blank"}
 This is an interactive widget you can use to visualize the effects of different parameters of the meta-$d'$ model.
 
-## [Documentation](https://kevingoneill.shinyapps.io/hmetad){target="_blank"}
+## [Documentation](https://metacoglab.github.io/hmetad/){target="_blank"}
 This is the main documentation page for the `hmetad` package in `R`.
 
