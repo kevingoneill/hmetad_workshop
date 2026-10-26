@@ -7,6 +7,9 @@ This website contains materials for a workshop on measures and Bayesian models o
 
 Please use the following links to access the workshop materials:
 
+## [Manuscript](https://metacoglab.github.io/hmetad_tutorial/){target="_blank"}
+This is a manuscript outlining the meta-$d'$ model through re-analysis of an open dataset.
+
 ## [Tutorial](tutorial/index.html)
 This is the main tutorial worksheet, which focuses on the need for performance-independent measures of metacognition, the meta-$d'$ model, and the benefits of hierarchical Bayesian estimation.
 

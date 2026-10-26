@@ -13,6 +13,8 @@ website:
     left:
       - href: index.qmd
         text: Home
+      - href: https://metacoglab.github.io/hmetad_tutorial/
+        text: Manuscript
       - href: tutorial/index.html
         text: Tutorial
       - href: slides/index.html
