@@ -7,6 +7,13 @@
     "text": "This website contains materials for a workshop on measures and Bayesian models of metacognition.\nPlease use the following links to access the workshop materials:"
   },
   {
+    "objectID": "index.html#manuscript",
+    "href": "index.html#manuscript",
+    "title": "Quantifying metacognitive performance with the hmetad package in R",
+    "section": "Manuscript",
+    "text": "Manuscript\nThis is a manuscript outlining the meta-\\(d'\\) model through re-analysis of an open dataset."
+  },
+  {
     "objectID": "index.html#tutorial",
     "href": "index.html#tutorial",
     "title": "Quantifying metacognitive performance with the hmetad package in R",

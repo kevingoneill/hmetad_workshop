@@ -116,20 +116,6 @@ div.csl-indent {
 <link href="../site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet">
 <script src="../site_libs/pagedtable-1.1/js/pagedtable.js"></script>
 <style>
-div.callout-exercise.callout {
-  border-left-color: blue;
-}
-div.callout-exercise.callout-style-default .callout-header {
-  background-color: rgb(from blue r g b / 13%);
-}
-div.callout-exercise .callout-toggle::before {  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="rgb(33, 37, 41)" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');}
-div.callout-exercise.callout-style-default .callout-icon::before, div.callout-exercise.callout-titled .callout-icon::before {
-  font-family: 'Font Awesome 7 Free';
-  font-weight: 900;
-  font-style: normal;
-  content: '\f044' !important;
-  background-image: none;
-}
 div.callout-answer.callout {
   border-left-color: green;
 }
@@ -142,6 +128,20 @@ div.callout-answer.callout-style-default .callout-icon::before, div.callout-answ
   font-weight: 900;
   font-style: normal;
   content: '\f0eb' !important;
+  background-image: none;
+}
+div.callout-exercise.callout {
+  border-left-color: blue;
+}
+div.callout-exercise.callout-style-default .callout-header {
+  background-color: rgb(from blue r g b / 13%);
+}
+div.callout-exercise .callout-toggle::before {  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="rgb(33, 37, 41)" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');}
+div.callout-exercise.callout-style-default .callout-icon::before, div.callout-exercise.callout-titled .callout-icon::before {
+  font-family: 'Font Awesome 7 Free';
+  font-weight: 900;
+  font-style: normal;
+  content: '\f044' !important;
   background-image: none;
 }
 </style>
@@ -211,6 +211,10 @@ window.Quarto = {
   <li class="nav-item">
     <a class="nav-link" href="../index.html"> 
 <span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://metacoglab.github.io/hmetad_tutorial/"> 
+<span class="menu-text">Manuscript</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link active" href="../tutorial/index.html" aria-current="page"> 
@@ -651,7 +655,7 @@ Note
 <p>Our goal is to model these four probabilities. To do so, we will assume that people receive some noisy evidence about the stimulus, <span class="math inline">x_1</span>. For simplicity, we will assume that the evidence has a normal distribution with a mean that depends on the stimulus <span class="math inline">S</span>:</p>
 <div class="cell" data-layout-align="center" data-output-fold="false">
 <div class="cell-output-display">
-<div id="fig-sdt" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center" width="576">
+<div id="fig-sdt" class="quarto-float quarto-figure quarto-figure-center anchored" width="576" data-fig-align="center">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-sdt-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="index_files/figure-html/fig-sdt-1.svg" id="fig-sdt" class="img-fluid quarto-figure quarto-figure-center anchored figure-img" width="576">
@@ -667,7 +671,7 @@ Figure&nbsp;1
 <p>Then, we assume that people set an evidence threshold (or, criterion, <span class="math inline">c</span>) that they use to decide whether they think <span class="math inline">S=0</span> or <span class="math inline">S=1</span>. Specifically, people respond <span class="math inline">R=0</span> when the evidence is less than the threshold and <span class="math inline">R=1</span> when the evidence exceeds the threshold:</p>
 <div class="cell" data-layout-align="center" data-output-fold="false">
 <div class="cell-output-display">
-<div id="fig-sdt2" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center" width="576">
+<div id="fig-sdt2" class="quarto-float quarto-figure quarto-figure-center anchored" width="576" data-fig-align="center">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-sdt2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="index_files/figure-html/fig-sdt2-1.svg" id="fig-sdt2" class="img-fluid quarto-figure quarto-figure-center anchored figure-img" width="576">
@@ -686,7 +690,7 @@ Figure&nbsp;2
 <p>The meta-d’ model adds to classical SDT by including a separate process for confidence ratings <span class="citation" data-cites="maniscalco2012 maniscalco2014 fleming2017">(<a href="#ref-maniscalco2012" role="doc-biblioref">Maniscalco and Lau 2012</a>, <a href="#ref-maniscalco2014" role="doc-biblioref">2014</a>; <a href="#ref-fleming2017" role="doc-biblioref">Fleming 2017</a>)</span>. This process works very similar: we assume that, depending on their previous response, people get another sample of noisy evidence about the stimulus to make confidence ratings (<span class="math inline">x_2</span>), and then they threshold this evidence to make an confidence rating (<span class="math inline">C</span>):</p>
 <div class="cell" data-layout-align="center" data-output-fold="false">
 <div class="cell-output-display">
-<div id="fig-sdt3" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center" width="576">
+<div id="fig-sdt3" class="quarto-float quarto-figure quarto-figure-center anchored" width="576" data-fig-align="center">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-sdt3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="index_files/figure-html/fig-sdt3-1.svg" id="fig-sdt3" class="img-fluid quarto-figure quarto-figure-center anchored figure-img" width="576">
