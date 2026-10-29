@@ -1,5 +1,5 @@
 ---
-title: Quantifying metacognitive performance with the `hmetad` package in `R`
+title: Quantifying metacognition with the `hmetad` package in `R`
 author: 
   name: Kevin O'Neill
   affiliation: 
